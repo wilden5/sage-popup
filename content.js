@@ -698,5 +698,8 @@
     true
   );
 
-  window.addEventListener("blur", hideAll);
+  // The popup deliberately survives window blur (switching tabs/windows and
+  // coming back): the selection is still there, so its anchor stays valid —
+  // same "state of the page, not a transient tooltip" logic as scrolling.
+  // Only explicit user actions dismiss it: click outside, Escape, a new lookup.
 })();
