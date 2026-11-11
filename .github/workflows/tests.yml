@@ -3,7 +3,9 @@ name: tests
 # Free plan: private repos get 2000 Actions minutes/month, this job uses ~2.
 on:
   push:
-    branches: [main]
+    # main = merged milestones; ts-migration = every agent round gets a
+    # full check automatically (Vibe reviews diffs, Actions proves green).
+    branches: [main, ts-migration]
   schedule:
     # Daily 06:30 UTC = 09:30 Minsk (UTC+3). GitHub may delay cron runs a bit
     # during busy periods — fine for a once-a-day health check.
