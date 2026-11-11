@@ -34,7 +34,8 @@ export async function lookup(rawWord: string): Promise<OxfordLookupResponse> {
 
   cache.set(slug, result);
   if (cache.size > CACHE_MAX) {
-    cache.delete(cache.keys().next().value);
+    // The map is non-empty here (size > CACHE_MAX), so the first key exists.
+    cache.delete(cache.keys().next().value!);
   }
   return result;
 }
