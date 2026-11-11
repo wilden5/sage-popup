@@ -29,6 +29,7 @@
   let icon = null;
   let popup = null;
   let pendingWord = null;
+  let pendingRange = null; // live Range of the current selection (for icon tracking)
   let currentAudio = null;
   let anchorX = 40;
   let anchorY = 40; // viewport point below the word the popup is anchored to
@@ -80,6 +81,7 @@
   function hideAll() {
     hideIcon();
     hidePopup();
+    pendingRange = null;
   }
 
   function stopAudio() {
@@ -97,6 +99,14 @@
 
   // ----------------------------------------------------------- floating icon
 
+  function positionIcon(x, y) {
+    if (!icon) return;
+    const left = Math.max(4, Math.min(x + 2, window.innerWidth - 32));
+    const top = Math.max(4, Math.min(y + 6, window.innerHeight - 32));
+    icon.style.left = left + "px";
+    icon.style.top = top + "px";
+  }
+
   function showIcon(x, y) {
     hideIcon();
     icon = el("div");
@@ -113,11 +123,40 @@
       openPopup();
     });
     document.documentElement.appendChild(icon);
+    positionIcon(x, y);
+  }
 
-    const left = Math.max(4, Math.min(x + 2, window.innerWidth - 32));
-    const top = Math.max(4, Math.min(y + 6, window.innerHeight - 32));
-    icon.style.left = left + "px";
-    icon.style.top = top + "px";
+  /**
+   * On scroll keep the floating icon attached to the selected word: it moves
+   * with the word, disappears together with it once the word leaves the
+   * viewport, and reappears when the (still selected) word scrolls back into
+   * view. Throttled to one update per frame via requestAnimationFrame.
+   */
+  let iconFollowQueued = false;
+  function followSelection() {
+    if (iconFollowQueued) return;
+    iconFollowQueued = true;
+    requestAnimationFrame(() => {
+      iconFollowQueued = false;
+      if (!pendingRange || !pendingWord || popup) return; // no icon while the popup is open
+      const rect = pendingRange.getBoundingClientRect();
+      if (
+        !rect ||
+        (!rect.width && !rect.height) ||
+        rect.top > window.innerHeight ||
+        rect.bottom < 0 ||
+        rect.left > window.innerWidth ||
+        rect.right < 0
+      ) {
+        hideIcon(); // the word left the viewport — the icon leaves with it
+        return;
+      }
+      if (icon) {
+        positionIcon(rect.right, rect.bottom);
+      } else {
+        showIcon(rect.right, rect.bottom); // word scrolled back — bring the icon back
+      }
+    });
   }
 
   function openPopup() {
@@ -367,6 +406,7 @@
       }
 
       pendingWord = word;
+      pendingRange = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
       let x = e.clientX;
       let y = e.clientY;
       if (sel.rangeCount > 0) {
@@ -396,13 +436,14 @@
   });
 
   // On scroll keep the popup open (it is position:fixed and fully usable),
-  // but hide the floating icon — its position belongs to the old scroll
-  // offset. Scrolling inside the popup itself changes nothing.
+  // and keep the floating icon attached to the selected word — it follows
+  // the word and disappears once the word leaves the viewport. Scrolling
+  // inside the popup itself changes nothing.
   window.addEventListener(
     "scroll",
     (e) => {
       if (popup && e.target === popup) return;
-      hideIcon();
+      followSelection();
     },
     true
   );
