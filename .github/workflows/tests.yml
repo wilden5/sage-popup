@@ -19,9 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Unit tests (pure logic: inflection, prompts, AI answer parsing)
+      - name: "Unit tests — inflection, prompts, AI answer parsing"
         run: |
           node test_inflect.js
           node test_ai_parse.js
-      - name: Live checks (Oxford markup + api.mistral.ai)
+      - name: "Live checks — Oxford markup, api.mistral.ai"
         run: node scripts/live-check.js
