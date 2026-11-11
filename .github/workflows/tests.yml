@@ -1,0 +1,27 @@
+name: tests
+
+# Free plan: private repos get 2000 Actions minutes/month, this job uses ~2.
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Daily 06:30 UTC = 09:30 Minsk (UTC+3). GitHub may delay cron runs a bit
+    # during busy periods — fine for a once-a-day health check.
+    - cron: "30 6 * * *"
+  # Manual trigger from the Actions tab ("Run workflow" button).
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit tests (pure logic: inflection, prompts, AI answer parsing)
+        run: |
+          node test_inflect.js
+          node test_ai_parse.js
+      - name: Live checks (Oxford markup + api.mistral.ai)
+        run: node scripts/live-check.js

@@ -121,3 +121,22 @@ If Oxford changes their markup, fix the selectors in `parseEntry()` in
 | sense | `li.sense` |
 | grammar label | `.sensetop .grammar` |
 | definition | `.def` |
+
+## CI (GitHub Actions, free tier)
+
+`.github/workflows/tests.yml` runs on every push to `main`, daily at 09:30
+Minsk time, and manually (Actions tab → "Run workflow"):
+
+1. **Unit tests** — `test_inflect.js` (inflection candidates + AI prompt
+   contract), `test_ai_parse.js` (streamed answer parsing). Plain Node, no
+   dependencies.
+2. **Live checks** — `scripts/live-check.js` fetches real Oxford pages
+   (`cocoa`, `house`, `walk`) and asserts every markup marker the parser
+   depends on (headword, def, phons_br, pron-uk, data-src-mp3, senses lists,
+   CEFR symbols), plus that `api.mistral.ai` is alive (200/401). If Oxford
+   changes its markup or the API domain breaks again, the run fails and
+   GitHub emails the account owner (default "workflow failure on schedule"
+   notifications — see Settings → Notifications → Actions).
+
+One gotcha: GitHub disables **scheduled** workflows after 60 days of repo
+inactivity; regular pushes keep it alive.
