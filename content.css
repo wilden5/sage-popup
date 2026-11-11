@@ -4,8 +4,8 @@
   position: fixed;
   z-index: 2147483000;
   box-sizing: border-box;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #ffffff;
   border: 1px solid #d0d4d9;
@@ -26,8 +26,8 @@
 }
 
 #oxp-icon svg {
-  width: 13px;
-  height: 13px;
+  width: 17px;
+  height: 17px;
   display: block;
 }
 

@@ -90,8 +90,8 @@
     });
     document.documentElement.appendChild(icon);
 
-    const left = Math.max(4, Math.min(x + 2, window.innerWidth - 28));
-    const top = Math.max(4, Math.min(y + 6, window.innerHeight - 28));
+    const left = Math.max(4, Math.min(x + 2, window.innerWidth - 32));
+    const top = Math.max(4, Math.min(y + 6, window.innerHeight - 32));
     icon.style.left = left + "px";
     icon.style.top = top + "px";
   }
@@ -303,6 +303,17 @@
     if (e.key === "Escape") hideAll();
   });
 
-  window.addEventListener("scroll", hideAll, true);
+  // On scroll keep the popup open (it is position:fixed and fully usable),
+  // but hide the floating icon — its position belongs to the old scroll
+  // offset. Scrolling inside the popup itself changes nothing.
+  window.addEventListener(
+    "scroll",
+    (e) => {
+      if (popup && e.target === popup) return;
+      hideIcon();
+    },
+    true
+  );
+
   window.addEventListener("blur", hideAll);
 })();

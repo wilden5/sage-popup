@@ -16,6 +16,15 @@ Works in both Chrome and Firefox (Manifest V3).
 - a link to the full entry on oxfordlearnersdictionaries.com
 - if the word is not found — a link to an Oxford search
 
+Inflected forms are handled automatically: the original selection is tried
+first (many inflections like *went* or *knives* have their own Oxford
+entries), then likely base forms — plurals (*-s, -es, -ies, -ves, -ses*),
+verb forms (*-ed, -ing*), and a few irregulars (*children → child*). For
+phrases only the last word is varied (*cocoa beans → cocoa bean*).
+
+The popup stays open while you scroll the page or the popup itself; close it
+with a click outside or `Esc`.
+
 No audio, no settings, no options page — on purpose.
 
 ## Install
