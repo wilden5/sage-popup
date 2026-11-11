@@ -1,0 +1,1 @@
+{"name":"oxford-popup","version":"1.1.5","description":"Oxford Popup","type":"module","scripts":{"typecheck":"tsc --noEmit","build":"node scripts/build.mjs","test":"vitest run"},"devDependencies":{"@types/chrome":"^0.0.254","esbuild":"^0.19.11","happy-dom":"^14.10.1","typescript":"^5.3.3","vitest":"^1.1.0"}}
