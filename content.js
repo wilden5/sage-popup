@@ -30,6 +30,8 @@
   let popup = null;
   let pendingWord = null;
   let currentAudio = null;
+  let anchorX = 40;
+  let anchorY = 40; // viewport point below the word the popup is anchored to
 
   // ---------------------------------------------------------------- helpers
 
@@ -144,12 +146,28 @@
     document.documentElement.appendChild(popup);
 
     // Position after layout so offsetWidth/Height are known.
+    placePopup(x, y);
+  }
+
+  /**
+   * Keep the popup fully inside the viewport. Called twice: once for the
+   * small "looking up…" stub and again after the real content renders —
+   * the entry is much taller, so the earlier placement can no longer fit.
+   * 1) below the word; 2) if it overflows — above the word;
+   * 3) if that is impossible too — clamped to the viewport edge
+   *    (the popup has its own scrollbar via max-height).
+   */
+  function placePopup(x, y) {
+    if (!popup) return;
+    if (x !== undefined) anchorX = x;
+    if (y !== undefined) anchorY = y;
     const w = popup.offsetWidth;
     const h = popup.offsetHeight;
-    const left = Math.max(8, Math.min(x, window.innerWidth - w - 8));
-    let top = y + 4;
-    if (top + h > window.innerHeight - 8) {
-      top = Math.max(8, y - h - 30);
+    const margin = 8;
+    const left = Math.max(margin, Math.min(anchorX, window.innerWidth - w - margin));
+    let top = anchorY + 4;
+    if (top + h > window.innerHeight - margin) {
+      top = Math.max(margin, Math.min(anchorY - h - 8, window.innerHeight - h - margin));
     }
     popup.style.left = left + "px";
     popup.style.top = top + "px";
@@ -167,6 +185,7 @@
 
     if (response && response.error) {
       popup.append(buildStatus(word, "couldn't reach oxfordlearnersdictionaries.com"));
+      placePopup(); // content height changed — re-fit into the viewport
       return;
     }
 
@@ -174,10 +193,12 @@
       const entry = parseEntry(response.html);
       if (entry) {
         popup.append(buildEntry(entry, response.url));
+        placePopup(); // content height changed — re-fit into the viewport
         return;
       }
     }
     popup.append(buildNotFound(word));
+    placePopup(); // content height changed — re-fit into the viewport
   }
 
   /** Parse the Oxford definition page into a small plain object. */

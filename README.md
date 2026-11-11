@@ -17,6 +17,8 @@ Works in both Chrome and Firefox (Manifest V3).
 - all senses of the first dictionary entry (numbered, with grammar labels
   like *[uncountable]*)
 - a link to the full entry on oxfordlearnersdictionaries.com
+- the popup always fits on screen: it flips above the word or clamps to
+  the viewport edge (with its own scrollbar for long entries)
 - if the word is not found — a link to an Oxford search
 
 Inflected forms are handled automatically: the original selection is tried
