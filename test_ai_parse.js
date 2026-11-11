@@ -1,40 +1,110 @@
+"use strict";
+
+/**
+ * Unit tests for parseAiItems from content.js (extracted between the
+ * ai-items markers — the function itself has no DOM dependencies).
+ * Run: node test_ai_parse.js
+ */
+
 const fs = require("fs");
-let src = fs.readFileSync("content.js", "utf8");
+const path = require("path");
+
+const src = fs.readFileSync(path.join(__dirname, "content.js"), "utf8");
 const start = src.indexOf("/* ai-items-start");
 const end = src.indexOf("/* ai-items-end");
-if (start < 0 || end < 0) { console.log("FAIL: markers not found"); process.exit(1); }
-eval(src.slice(start, end) + "; globalThis.parseAiItems = parseAiItems;");
-
-const cases = [
-  // [input, expected [{meaning, example}]]
-  ["1. a seed — I planted a seed in the garden.",
-    [{ meaning: "a seed", example: "I planted a seed in the garden." }]],
-  ["1. a seed — I planted a seed in the garden.\n2. the beginning of something — The idea was a seed of change.",
-    [{ meaning: "a seed", example: "I planted a seed in the garden." },
-     { meaning: "the beginning of something", example: "The idea was a seed of change." }]],
-  ["1) small hard part of a plant — Birds eat seeds.",
-    [{ meaning: "small hard part of a plant", example: "Birds eat seeds." }]],
-  ["1. meaning with no example",
-    [{ meaning: "meaning with no example", example: "" }]],
-  ["Sure! Here are the meanings:\n1. one who runs — She runs fast.",
-    [{ meaning: "one who runs", example: "She runs fast." }]],
-  ["1. quoted example — \"He gave a quote.\"",
-    [{ meaning: "quoted example", example: "He gave a quote." }]],
-  ["just a plain line without numbering",
-    [{ meaning: "just a plain line without numbering", example: "" }]],
-  ["1. item one — Example one.\n2. item two — Example two.\n3. item three — Example three.\n4. item four — Example four.\n5. item five — Example five.",
-    [{ meaning: "item one", example: "Example one." },
-     { meaning: "item two", example: "Example two." },
-     { meaning: "item three", example: "Example three." },
-     { meaning: "item four", example: "Example four." }]],
-  ["", []],
-];
-let fails = 0;
-for (const [input, expected] of cases) {
-  const got = parseAiItems(input);
-  const ok = JSON.stringify(got) === JSON.stringify(expected);
-  if (!ok) { fails++; console.log("FAIL", JSON.stringify(input), "\n  got:", JSON.stringify(got), "\n  exp:", JSON.stringify(expected)); }
-  else console.log("ok  ", JSON.stringify(input.slice(0, 40)));
+if (start === -1 || end === -1) {
+  console.error("FAIL: ai-items markers not found in content.js");
+  process.exit(1);
 }
-console.log(fails ? fails + " FAILURES" : "ALL " + cases.length + " PASSED");
-process.exit(fails ? 1 : 0);
+const body = src.slice(start, end);
+
+const sandbox = {};
+new Function("scope", body + "\n; scope.parseAiItems = parseAiItems;")(sandbox);
+const { parseAiItems } = sandbox;
+
+let passed = 0;
+let failed = 0;
+
+function check(name, actual, expected) {
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (ok) {
+    passed++;
+  } else {
+    failed++;
+    console.error("FAIL: " + name + "\n  expected " + JSON.stringify(expected) + "\n  actual   " + JSON.stringify(actual));
+  }
+}
+
+// 1: numbered items with em dash split into meaning + example
+check(
+  "numbered items",
+  parseAiItems("1. a hot drink — I drink cocoa at breakfast.\n2. powder — Add cocoa to the batter."),
+  [
+    { meaning: "a hot drink", example: "I drink cocoa at breakfast." },
+    { meaning: "powder", example: "Add cocoa to the batter." }
+  ]
+);
+
+// 2: quotes around examples are stripped
+check(
+  "quotes stripped",
+  parseAiItems('1. easy — "The exam was easy."'),
+  [{ meaning: "easy", example: "The exam was easy." }]
+);
+
+// 3: empty lines skipped
+check("empty lines skipped", parseAiItems("\n\n1. a — b\n\n"), [{ meaning: "a", example: "b" }]);
+
+// 4: stray preamble skipped
+check(
+  "preamble skipped",
+  parseAiItems("Sure! Here are the meanings:\n1. a — b"),
+  [{ meaning: "a", example: "b" }]
+);
+
+// 5: closing line skipped
+check(
+  "closing skipped",
+  parseAiItems("1. a — b\nHope this helps!"),
+  [{ meaning: "a", example: "b" }]
+);
+
+// 6: en dash and plain hyphen also split
+check(
+  "en dash splits",
+  parseAiItems("1. a – b"),
+  [{ meaning: "a", example: "b" }]
+);
+check(
+  "plain hyphen splits",
+  parseAiItems("2) a - b"),
+  [{ meaning: "a", example: "b" }]
+);
+
+// 7: unnumbered line without dash -> meaning only
+check(
+  "no dash -> meaning only",
+  parseAiItems("a short meaning"),
+  [{ meaning: "a short meaning", example: "" }]
+);
+
+// 8: caps at 4 items
+check(
+  "caps at 4 items",
+  parseAiItems("1. a — b\n2. c — d\n3. e — f\n4. g — h\n5. i — j").length,
+  4
+);
+
+// 9: whitespace trimmed
+check(
+  "whitespace trimmed",
+  parseAiItems("  1.  a  —  b  "),
+  [{ meaning: "a", example: "b" }]
+);
+
+if (failed === 0) {
+  console.log("ALL " + (passed + failed) + " PASSED");
+} else {
+  console.log(passed + " passed, " + failed + " FAILED");
+  process.exit(1);
+}

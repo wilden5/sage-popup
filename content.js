@@ -123,6 +123,7 @@
       popup = null;
     }
     stopAudio();
+    stopSpeech();
     closeAiPort();
   }
 
@@ -154,6 +155,40 @@
     stopAudio();
     currentAudio = new Audio(url);
     currentAudio.play().catch(() => {}); // ignore autoplay/network errors
+  }
+
+  // ---- text-to-speech for AI-explained phrases (no dictionary MP3 exists
+  // for arbitrary selections, so use the browser's built-in TTS voices)
+
+  let speechActive = false;
+
+  /** Speak `text` with a browser voice matching `lang` (en-GB / en-US). */
+  function speakText(text, lang) {
+    stopAudio();
+    stopSpeech();
+    if (!text || !("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.95; // slightly slower than the default 1.0 for learners
+    const voice = window.speechSynthesis
+      .getVoices()
+      .find((v) => (v.lang || "").replace("_", "-").toLowerCase().startsWith(lang.toLowerCase()));
+    if (voice) utterance.voice = voice; // fall back to the engine default otherwise
+    utterance.onend = () => {
+      speechActive = false;
+    };
+    utterance.onerror = () => {
+      speechActive = false;
+    };
+    speechActive = true;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function stopSpeech() {
+    if ("speechSynthesis" in window && speechActive) {
+      window.speechSynthesis.cancel();
+    }
+    speechActive = false;
   }
 
   // ----------------------------------------------------------- floating icon
@@ -580,6 +615,28 @@
     head.append(el("span", "oxp-word", aiWord));
     head.append(buildAiBadge());
     popup.append(head);
+
+    // Pronunciation row: browser TTS buttons (phrases have no Oxford MP3s).
+    const phon = el("div", "oxp-phon");
+    const addSpeakPart = (label, lang) => {
+      const part = el("span", "oxp-phon-part");
+      const btn = el("button", "oxp-audio");
+      btn.type = "button";
+      btn.title = "Speak the " + label + " way (browser voice)";
+      btn.innerHTML = SPEAKER_SVG;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        speakText(aiWord, lang);
+      });
+      part.append(btn);
+      part.append(document.createTextNode(" " + label));
+      phon.append(part);
+    };
+    addSpeakPart("BrE", "en-GB");
+    phon.append(el("span", "oxp-phon-sep", "·"));
+    addSpeakPart("NAmE", "en-US");
+    popup.append(phon);
 
     const ol = el("ol", "oxp-senses");
     for (const item of parseAiItems(buffer)) {
