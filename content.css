@@ -73,9 +73,49 @@
 }
 
 #oxp-popup .oxp-phon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
   margin-bottom: 8px;
   color: #57606a;
   font-size: 12px;
+}
+
+#oxp-popup .oxp-phon-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+#oxp-popup .oxp-phon-sep {
+  color: #9aa4af;
+}
+
+#oxp-popup button.oxp-audio {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 1px;
+  margin: 0;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: #57606a;
+  border-radius: 4px;
+}
+
+#oxp-popup button.oxp-audio:hover {
+  color: #1a56a0;
+  background: #eef3f9;
+}
+
+#oxp-popup button.oxp-audio svg {
+  width: 13px;
+  height: 13px;
+  display: block;
 }
 
 #oxp-popup ol.oxp-senses {

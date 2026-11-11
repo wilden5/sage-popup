@@ -16,12 +16,20 @@
     '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/>' +
     '<path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>';
 
+  const SPEAKER_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M11 5 6 9H2v6h4l5 4z"/>' +
+    '<path d="M15.5 8.5a5 5 0 0 1 0 7"/>' +
+    '<path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+
   const SEARCH_URL = "https://www.oxfordlearnersdictionaries.com/search/english/?q=";
   const MAX_WORD_LEN = 80;
 
   let icon = null;
   let popup = null;
   let pendingWord = null;
+  let currentAudio = null;
 
   // ---------------------------------------------------------------- helpers
 
@@ -64,11 +72,25 @@
       popup.remove();
       popup = null;
     }
+    stopAudio();
   }
 
   function hideAll() {
     hideIcon();
     hidePopup();
+  }
+
+  function stopAudio() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+  }
+
+  function playAudio(url) {
+    stopAudio();
+    currentAudio = new Audio(url);
+    currentAudio.play().catch(() => {}); // ignore autoplay/network errors
   }
 
   // ----------------------------------------------------------- floating icon
@@ -168,6 +190,8 @@
     const pos = entry.querySelector(".webtop .pos");
     const phonBr = entry.querySelector(".phons_br .phon");
     const phonUs = entry.querySelector(".phons_n_am .phon");
+    const pronUk = entry.querySelector(".phons_br .sound.pron-uk");
+    const pronUs = entry.querySelector(".phons_n_am .sound.pron-us");
 
     // First senses list of the first entry (skips run-on blocks).
     const list = entry.querySelector("ol.senses_multiple, ol.sense_single");
@@ -194,6 +218,8 @@
       pos: pos ? pos.textContent.trim() : "",
       phonBr: phonBr ? phonBr.textContent.trim() : "",
       phonUs: phonUs ? phonUs.textContent.trim() : "",
+      audioUk: pronUk ? pronUk.getAttribute("data-src-mp3") || "" : "",
+      audioUs: pronUs ? pronUs.getAttribute("data-src-mp3") || "" : "",
       senses
     };
   }
@@ -206,10 +232,33 @@
     if (entry.pos) head.append(el("span", "oxp-pos", entry.pos));
     frag.append(head);
 
-    const phonParts = [];
-    if (entry.phonBr) phonParts.push("BrE " + entry.phonBr);
-    if (entry.phonUs) phonParts.push("NAmE " + entry.phonUs);
-    if (phonParts.length) frag.append(el("div", "oxp-phon", phonParts.join("   ·   ")));
+    // Pronunciation line: [speaker] BrE /X/ · [speaker] NAmE /Y/
+    const phon = el("div", "oxp-phon");
+    const addPhonPart = (label, transcription, audioUrl) => {
+      const part = el("span", "oxp-phon-part");
+      if (audioUrl) {
+        const btn = el("button", "oxp-audio");
+        btn.type = "button";
+        btn.title = "Play " + label + " pronunciation";
+        btn.innerHTML = SPEAKER_SVG;
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          playAudio(audioUrl);
+        });
+        part.append(btn);
+      }
+      if (transcription) {
+        part.append(document.createTextNode(label + " " + transcription));
+      }
+      if (part.childNodes.length) phon.append(part);
+    };
+    addPhonPart("BrE", entry.phonBr, entry.audioUk);
+    if (phon.childNodes.length && entry.phonUs) {
+      phon.append(el("span", "oxp-phon-sep", "·"));
+    }
+    addPhonPart("NAmE", entry.phonUs, entry.audioUs);
+    if (phon.childNodes.length) frag.append(phon);
 
     const ol = el("ol", "oxp-senses");
     for (const s of entry.senses) {

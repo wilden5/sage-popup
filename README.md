@@ -11,6 +11,8 @@ Works in both Chrome and Firefox (Manifest V3).
 ## What the popup shows
 
 - headword, part of speech, UK/US transcription
+- one-click UK/US pronunciation (the audio files come from Oxford's own
+  entry pages — no third-party TTS)
 - all senses of the first dictionary entry (numbered, with grammar labels
   like *[uncountable]*)
 - a link to the full entry on oxfordlearnersdictionaries.com
@@ -25,7 +27,7 @@ phrases only the last word is varied (*cocoa beans → cocoa bean*).
 The popup stays open while you scroll the page or the popup itself; close it
 with a click outside or `Esc`.
 
-No audio, no settings, no options page — on purpose.
+No settings, no options page — on purpose.
 
 ## Install
 
