@@ -63,11 +63,18 @@
         margin-top: 12px;
         min-height: 18px;
       }
-      #status.ok {
+      #status.ok,
+      #perm.ok {
         color: #1e7b34;
       }
-      #status.err {
+      #status.err,
+      #perm.err {
         color: #c72c1e;
+      }
+      #perm {
+        font-size: 12px;
+        margin: 6px 0 0;
+        min-height: 0;
       }
     </style>
   </head>
@@ -84,6 +91,8 @@
     <input id="key" type="password" autocomplete="off" placeholder="paste your key here" />
     <button id="save">Save</button>
     <button id="test">Test key</button>
+    <button id="grant">Grant access</button>
+    <p id="perm"></p>
     <p id="status"></p>
     <script src="options.js"></script>
   </body>

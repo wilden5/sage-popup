@@ -210,7 +210,10 @@ async function streamMistral(apiKey, prompt, onChunk) {
       })
     });
   } catch (err) {
-    throw new Error("could not reach api.mistral.com");
+    // Network-level failure (DNS, CORS/permission block, timeout). Keep the
+    // browser's own message — it distinguishes the cases in devtools and UI.
+    const raw = String(err && err.message ? err.message : err);
+    throw new Error("could not reach api.mistral.com — " + raw);
   }
 
   if (!response.ok) {
@@ -337,6 +340,12 @@ async function testMistralKey(key) {
     }
     return { ok: false, message: detail };
   } catch (err) {
-    return { ok: false, message: "could not reach api.mistral.com" };
+    const raw = String(err && err.message ? err.message : err);
+    return {
+      ok: false,
+      message:
+        "could not reach api.mistral.com (" + raw + "). " +
+        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.com."
+    };
   }
 }

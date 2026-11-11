@@ -554,8 +554,17 @@
         closeAiPort();
         clearChildren(popup);
         popup.append(buildStatus(word, "Mistral request failed"));
-        const detail = el("div", "oxp-detail", String(msg.message || "unknown error"));
-        popup.append(detail);
+        popup.append(el("div", "oxp-detail", String(msg.message || "unknown error")));
+        // The most common cause is a missing api.mistral.com permission —
+        // send the user straight to the settings page that can grant it.
+        const footer = el("div", "oxp-footer");
+        const btn = el("button", "oxp-btn", "Open settings");
+        btn.type = "button";
+        btn.addEventListener("click", () => {
+          chrome.runtime.sendMessage({ type: "oxford-open-options" });
+        });
+        footer.append(btn);
+        popup.append(footer);
         placePopup();
       }
     });

@@ -44,6 +44,14 @@ the key, **Test key**, **Save**. The key is stored only in
 `api.mistral.com`. Without a key everything Oxford keeps working; AI
 fallback simply degrades to the usual "no definition found" UI.
 
+Access to `api.mistral.com` is an **optional** host permission: the
+settings page shows its state and has a **Grant access** button (the
+same prompt appears automatically on **Test key**). Firefox does not
+grant newly added host permissions on extension reload — after
+re-loading a temporary add-on, click **Grant access** once and the AI
+fallback works again. It can also be enabled manually:
+`about:addons → Oxford Popup → «Разрешения и данные»`.
+
 ## Install
 
 ### Firefox (temporary, until the browser closes)
@@ -92,7 +100,8 @@ selection → floating icon → click
 ## Permissions
 
 - `host_permissions: https://www.oxfordlearnersdictionaries.com/*` and
-  `https://api.mistral.com/*` — only these. The extension reads every page
+  `optional_host_permissions: https://api.mistral.com/*` — only these.
+  The extension reads every page
   you select text on (any site) but sends data only to the Oxford dictionary
   domain and, for the AI fallback, to the Mistral API with your own key.
   The key itself stays in `chrome.storage.local`. No analytics.
