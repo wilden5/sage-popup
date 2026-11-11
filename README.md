@@ -11,6 +11,7 @@ Works in both Chrome and Firefox (Manifest V3).
 ## What the popup shows
 
 - headword, part of speech, UK/US transcription
+- CEFR level badge (A1–C2) for Oxford 3000/5000 words
 - one-click UK/US pronunciation (the audio files come from Oxford's own
   entry pages — no third-party TTS)
 - all senses of the first dictionary entry (numbered, with grammar labels

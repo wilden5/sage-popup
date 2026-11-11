@@ -192,6 +192,19 @@
     const phonUs = entry.querySelector(".phons_n_am .phon");
     const pronUk = entry.querySelector(".phons_br .sound.pron-uk");
     const pronUs = entry.querySelector(".phons_n_am .sound.pron-us");
+    // CEFR level badge (only Oxford 3000/5000 words have it; OPAL spans have no level).
+    const symSpan = entry.querySelector(
+      ".webtop .symbols span[class^='ox3ksym_'], .webtop .symbols span[class^='ox5ksym_']"
+    );
+    let level = "";
+    let levelList = "";
+    if (symSpan) {
+      const lm = (symSpan.className || "").match(/sym_([abc][12])/);
+      if (lm) {
+        level = lm[1].toUpperCase();
+        levelList = symSpan.className.indexOf("ox5k") === 0 ? "Oxford 5000" : "Oxford 3000";
+      }
+    }
 
     // First senses list of the first entry (skips run-on blocks).
     const list = entry.querySelector("ol.senses_multiple, ol.sense_single");
@@ -220,6 +233,8 @@
       phonUs: phonUs ? phonUs.textContent.trim() : "",
       audioUk: pronUk ? pronUk.getAttribute("data-src-mp3") || "" : "",
       audioUs: pronUs ? pronUs.getAttribute("data-src-mp3") || "" : "",
+      level,
+      levelList,
       senses
     };
   }
@@ -230,6 +245,13 @@
     const head = el("div", "oxp-head");
     head.append(el("span", "oxp-word", entry.headword));
     if (entry.pos) head.append(el("span", "oxp-pos", entry.pos));
+    if (entry.level) {
+      const badge = el("span", "oxp-level", entry.level);
+      badge.title = entry.levelList
+        ? entry.levelList + " · CEFR level " + entry.level
+        : "CEFR level " + entry.level;
+      head.append(badge);
+    }
     frag.append(head);
 
     // Pronunciation line: [speaker] BrE /X/ · [speaker] NAmE /Y/
