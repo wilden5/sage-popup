@@ -29,7 +29,7 @@ jobs:
         run: npm run build
       - name: "Unit tests — inflection, prompts, AI answer parsing"
         run: |
-          node test_inflect.js
+          npm test
           node test_ai_parse.js
       - name: "Live checks — Oxford markup, api.mistral.ai"
         run: node scripts/live-check.js
