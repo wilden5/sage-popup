@@ -1,0 +1,121 @@
+/* Oxford Popup — styles injected into every page. */
+
+#oxp-icon {
+  position: fixed;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #d0d4d9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
+  user-select: none;
+  -moz-user-select: none;
+  transition: background 0.12s ease;
+}
+
+#oxp-icon:hover {
+  background: #eef3f9;
+}
+
+#oxp-icon svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+#oxp-popup {
+  position: fixed;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  min-width: 200px;
+  max-width: 360px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: 12px 14px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2328;
+  text-align: left;
+}
+
+#oxp-popup,
+#oxp-popup * {
+  box-sizing: border-box;
+}
+
+#oxp-popup .oxp-head {
+  margin: 0 0 2px;
+}
+
+#oxp-popup .oxp-word {
+  font-size: 14px;
+  font-weight: 600;
+  color: #101418;
+}
+
+#oxp-popup .oxp-pos {
+  margin-left: 6px;
+  font-style: italic;
+  color: #57606a;
+}
+
+#oxp-popup .oxp-phon {
+  margin-bottom: 8px;
+  color: #57606a;
+  font-size: 12px;
+}
+
+#oxp-popup ol.oxp-senses {
+  margin: 4px 0 0;
+  padding: 0 0 0 18px;
+}
+
+#oxp-popup ol.oxp-senses li {
+  margin: 3px 0;
+}
+
+#oxp-popup .oxp-gram {
+  color: #57606a;
+  font-style: italic;
+}
+
+#oxp-popup .oxp-def {
+  color: #1f2328;
+}
+
+#oxp-popup .oxp-footer {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid #eaeef2;
+}
+
+#oxp-popup .oxp-link {
+  font-size: 11px;
+  color: #1a56a0;
+  text-decoration: none;
+}
+
+#oxp-popup .oxp-link:hover {
+  text-decoration: underline;
+}
+
+#oxp-popup .oxp-status {
+  color: #1f2328;
+}
+
+#oxp-popup .oxp-status-word {
+  font-weight: 600;
+}
