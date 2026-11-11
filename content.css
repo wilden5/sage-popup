@@ -191,6 +191,8 @@
 }
 
 #oxp-popup .oxp-ex {
+  display: block; /* example on its own line under the definition */
+  margin-top: 2px;
   font-style: italic;
   color: #57606a;
 }
