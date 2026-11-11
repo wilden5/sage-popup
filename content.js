@@ -8,6 +8,10 @@
    *   1. User selects a word -> a small floating button appears next to it.
    *   2. Click the button -> a minimal popup loads and shows the word's
    *      Oxford Learner's Dictionaries definition.
+   *   3. Multi-word selections, and single words Oxford does not know, fall
+   *      back to a Mistral AI explanation streamed straight into the popup
+   *      (marked with the Mistral badge). Needs an API key in settings;
+   *      without one the popup keeps working Oxford-only.
    */
 
   const BOOK_SVG =
@@ -15,6 +19,21 @@
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/>' +
     '<path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>';
+
+  // Official Mistral AI mark (2025), drawn as rects so it scales cleanly.
+  const MISTRAL_SVG =
+    '<svg viewBox="0 0 129 91" aria-hidden="true">' +
+    '<rect x="18.292" y="0" width="18.293" height="18.123" fill="#ffd800"/>' +
+    '<rect x="91.473" y="0" width="18.293" height="18.123" fill="#ffd800"/>' +
+    '<rect x="18.292" y="18.121" width="36.586" height="18.123" fill="#ffaf00"/>' +
+    '<rect x="73.181" y="18.121" width="36.586" height="18.123" fill="#ffaf00"/>' +
+    '<rect x="18.292" y="36.243" width="91.476" height="18.122" fill="#ff8205"/>' +
+    '<rect x="18.292" y="54.37" width="18.293" height="18.123" fill="#fa500f"/>' +
+    '<rect x="54.883" y="54.37" width="18.293" height="18.123" fill="#fa500f"/>' +
+    '<rect x="91.473" y="54.37" width="18.293" height="18.123" fill="#fa500f"/>' +
+    '<rect x="0" y="72.504" width="54.89" height="18.123" fill="#e10500"/>' +
+    '<rect x="73.181" y="72.504" width="54.89" height="18.123" fill="#e10500"/>' +
+    "</svg>";
 
   const SPEAKER_SVG =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -30,9 +49,13 @@
   let popup = null;
   let pendingWord = null;
   let pendingRange = null; // live Range of the current selection (for icon tracking)
+  let pendingIsPhrase = false; // 2+ words selected -> straight to the AI
+  let pendingSentence = ""; // context sentence around the selection (for the AI)
   let currentAudio = null;
   let anchorX = 40;
   let anchorY = 40; // viewport point below the word the popup is anchored to
+  let aiPort = null; // runtime port streaming the Mistral answer
+  let aiWord = ""; // word/phrase of the current AI answer
 
   // ---------------------------------------------------------------- helpers
 
@@ -63,6 +86,30 @@
       .trim();
   }
 
+  /**
+   * A short slice of the surrounding paragraph (~330 chars) around the
+   * selection, sent to Mistral as context. Best effort: an empty string is
+   * fine — the prompt works without it.
+   */
+  function sentenceContext() {
+    try {
+      if (!pendingRange || !pendingWord) return "";
+      const node = pendingRange.startContainer;
+      const block = node.nodeType === 3 ? node.parentElement : node; // text node -> element
+      if (!block) return "";
+      const text = (block.textContent || "").replace(/\s+/g, " ").trim();
+      if (!text) return "";
+      const anchor = pendingWord.split(" ")[0];
+      const idx = text.indexOf(anchor);
+      if (idx === -1) return text.slice(0, 320);
+      const start = Math.max(0, idx - 150);
+      const end = Math.min(text.length, idx + pendingWord.length + 180);
+      return text.slice(start, end);
+    } catch (err) {
+      return "";
+    }
+  }
+
   function hideIcon() {
     if (icon) {
       icon.remove();
@@ -76,6 +123,18 @@
       popup = null;
     }
     stopAudio();
+    closeAiPort();
+  }
+
+  function closeAiPort() {
+    if (aiPort) {
+      try {
+        aiPort.disconnect();
+      } catch (err) {
+        // already gone
+      }
+      aiPort = null;
+    }
   }
 
   function hideAll() {
@@ -162,24 +221,32 @@
   function openPopup() {
     const word = pendingWord;
     if (!word) return;
+    const isPhrase = pendingIsPhrase;
+    const sentence = pendingSentence;
     const rect = icon ? icon.getBoundingClientRect() : null;
     const x = rect ? rect.left : 40;
     const y = rect ? rect.bottom : 40;
     hideIcon();
-    renderPopup(word, x, y);
-    void lookupAndRender(word);
+    renderPopup(word, x, y, isPhrase);
+    if (isPhrase) {
+      // Phrases go straight to Mistral (per design: context explanation).
+      tryAi(word, sentence, true, () => buildNoKey(word), false);
+    } else {
+      void lookupAndRender(word, sentence);
+    }
   }
 
   // ------------------------------------------------------------------- popup
 
-  function renderPopup(word, x, y) {
+  function renderPopup(word, x, y, aiMode) {
     hidePopup();
     popup = el("div");
     popup.id = "oxp-popup";
 
     const status = el("div", "oxp-status");
     status.append(el("span", "oxp-status-word", word));
-    status.append(document.createTextNode(" — looking up…"));
+    status.append(document.createTextNode(aiMode ? " — asking Mistral…" : " — looking up…"));
+    if (aiMode) status.append(buildAiBadge());
     popup.append(status);
 
     document.documentElement.appendChild(popup);
@@ -212,7 +279,7 @@
     popup.style.top = top + "px";
   }
 
-  async function lookupAndRender(word) {
+  async function lookupAndRender(word, sentence) {
     let response = null;
     try {
       response = await chrome.runtime.sendMessage({ type: "oxford-lookup", word });
@@ -225,6 +292,18 @@
     if (response && response.error) {
       popup.append(buildStatus(word, "couldn't reach oxfordlearnersdictionaries.com"));
       placePopup(); // content height changed — re-fit into the viewport
+      tryAi(
+        word,
+        sentence,
+        false,
+        () => {
+          if (!popup) return;
+          clearChildren(popup);
+          popup.append(buildStatus(word, "couldn't reach oxfordlearnersdictionaries.com"));
+          placePopup();
+        },
+        true
+      );
       return;
     }
 
@@ -238,6 +317,18 @@
     }
     popup.append(buildNotFound(word));
     placePopup(); // content height changed — re-fit into the viewport
+    tryAi(
+      word,
+      sentence,
+      false,
+      () => {
+        if (!popup) return;
+        clearChildren(popup);
+        popup.append(buildNotFound(word));
+        placePopup();
+      },
+      true
+    );
   }
 
   /** Parse the Oxford definition page into a small plain object. */
@@ -382,6 +473,154 @@
     return box;
   }
 
+  // ----------------------------------------------------------------- Mistral
+
+  function buildAiBadge() {
+    const badge = el("span", "oxp-ai-badge");
+    badge.title = "Explained by Mistral AI";
+    badge.innerHTML = MISTRAL_SVG;
+    return badge;
+  }
+
+  /**
+   * Parse the streamed AI answer into Oxford-like list items.
+   * Expected format (see the prompt in background.js): one item per line,
+   * "N. meaning — example". Tolerates missing numbers, stray preambles and
+   * wrapped-in-quotes examples; caps the list at 4 items.
+   */
+  /* ai-items-start (extracted and unit-tested by test_ai_parse.js) */
+  function parseAiItems(buffer) {
+    const items = [];
+    const lines = String(buffer || "").replace(/\r/g, "").split("\n");
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const numbered = line.match(/^\d+[.)]\s*(.+)$/);
+      const body = numbered ? numbered[1] : line;
+      if (!numbered && !/[a-zA-Z]/.test(body)) continue;
+      if (!numbered && /^(sure|here|certainly|of course|hope|note|glad)/i.test(body)) {
+        continue; // stray preamble ("Sure! Here are...") or closing ("Hope this helps!")
+      }
+      const split = body.match(/^(.+?)\s+[—–-]\s+(.+)$/);
+      let meaning = split ? split[1].trim() : body.trim();
+      let example = split ? split[2].trim().replace(/^["“']+|["”']+$/g, "") : "";
+      if (meaning) {
+        items.push({ meaning, example });
+      }
+    }
+    return items.slice(0, 4);
+  }
+  /* ai-items-end */
+
+  /**
+   * Ask Mistral to explain word/phrase and stream the answer into the popup.
+   * `restore` rebuilds the previous (Oxford) UI when the user has no API
+   * key yet; `renderInitial` re-renders the "asking Mistral…" stub — false
+   * for the phrase path where renderPopup() already drew it.
+   */
+  function tryAi(word, sentence, isPhrase, restore, renderInitial) {
+    if (!popup) return;
+    closeAiPort();
+    aiWord = word;
+
+    if (renderInitial) {
+      clearChildren(popup);
+      const status = el("div", "oxp-status");
+      status.append(el("span", "oxp-status-word", word));
+      status.append(document.createTextNode(" — asking Mistral…"));
+      status.append(buildAiBadge());
+      popup.append(status);
+      placePopup();
+    }
+
+    let buffer = "";
+    aiPort = chrome.runtime.connect({ name: "oxford-ai" });
+    aiPort.onMessage.addListener((msg) => {
+      if (!popup) return;
+      if (msg.type === "chunk") {
+        buffer += msg.text;
+        renderAiAnswer(buffer, false);
+      } else if (msg.type === "done") {
+        closeAiPort();
+        if (!buffer.trim()) {
+          renderAiFallbackOnly(); // model returned nothing — show not-found
+          return;
+        }
+        renderAiAnswer(buffer, true);
+      } else if (msg.type === "no-key") {
+        closeAiPort();
+        restore();
+      } else if (msg.type === "error") {
+        closeAiPort();
+        clearChildren(popup);
+        popup.append(buildStatus(word, "Mistral request failed"));
+        const detail = el("div", "oxp-detail", String(msg.message || "unknown error"));
+        popup.append(detail);
+        placePopup();
+      }
+    });
+    aiPort.postMessage({ word, sentence, isPhrase });
+  }
+
+  /** Render the streamed buffer as header + numbered list (Oxford-like). */
+  function renderAiAnswer(buffer, done) {
+    if (!popup) return;
+    clearChildren(popup);
+
+    const head = el("div", "oxp-head");
+    head.append(el("span", "oxp-word", aiWord));
+    head.append(buildAiBadge());
+    popup.append(head);
+
+    const ol = el("ol", "oxp-senses");
+    for (const item of parseAiItems(buffer)) {
+      const li = el("li");
+      li.append(el("span", "oxp-def", item.meaning));
+      if (item.example) {
+        li.append(el("span", "oxp-ex", '"' + item.example + '"'));
+      }
+      ol.append(li);
+    }
+    popup.append(ol);
+
+    if (done) {
+      const footer = el("div", "oxp-footer");
+      footer.append(el("span", "oxp-ai-note", "Explained by Mistral AI"));
+      popup.append(footer);
+    }
+    placePopup(); // content height changed — re-fit into the viewport
+  }
+
+  /** The AI answer was empty: degrade to the Oxford not-found UI. */
+  function renderAiFallbackOnly() {
+    if (!popup) return;
+    clearChildren(popup);
+    popup.append(buildNotFound(aiWord));
+    placePopup();
+  }
+
+  /** Phrase mode without an API key: explain + a way to open the settings. */
+  function buildNoKey(word) {
+    if (!popup) return;
+    clearChildren(popup);
+    popup.append(buildStatus(word, "AI explanations need a Mistral API key"));
+    const footer = el("div", "oxp-footer");
+    const btn = el("button", "oxp-btn", "Open settings");
+    btn.type = "button";
+    btn.addEventListener("click", () => {
+      chrome.runtime.sendMessage({ type: "oxford-open-options" });
+    });
+    footer.append(btn);
+    footer.append(document.createTextNode(" "));
+    const link = el("a", "oxp-link", "Search on Oxford");
+    link.href = SEARCH_URL + encodeURIComponent(word);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    footer.append(link);
+    popup.append(footer);
+    placePopup();
+  }
+
   // -------------------------------------------------------------- selection
 
   document.addEventListener(
@@ -407,6 +646,8 @@
 
       pendingWord = word;
       pendingRange = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+      pendingIsPhrase = /\s/.test(word); // two or more words
+      pendingSentence = sentenceContext();
       let x = e.clientX;
       let y = e.clientY;
       if (sel.rangeCount > 0) {
