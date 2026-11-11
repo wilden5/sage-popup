@@ -9,7 +9,7 @@
  *     hands the raw HTML back to the content script (which parses it with
  *     DOMParser, unavailable inside Chrome's MV3 service worker).
  *  2. Streams "explain this word/phrase" answers from the Mistral API
- *     (https://api.mistral.com) over a runtime port, used for multi-word
+ *     (https://api.mistral.ai) over a runtime port, used for multi-word
  *     selections and for words Oxford does not know. The API key lives in
  *     chrome.storage.local (set from the options page) — never in code.
  *
@@ -25,8 +25,8 @@ const FETCH_TIMEOUT_MS = 10000;
 const CACHE_MAX = 128;
 const MAX_CANDIDATES = 8;
 
-const MISTRAL_CHAT_URL = "https://api.mistral.com/v1/chat/completions";
-const MISTRAL_MODELS_URL = "https://api.mistral.com/v1/models";
+const MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions";
+const MISTRAL_MODELS_URL = "https://api.mistral.ai/v1/models";
 const AI_MODEL = "mistral-small-latest";
 
 /** Inflected forms Oxford has no entry for -> their base form. */
@@ -213,14 +213,14 @@ async function streamMistral(apiKey, prompt, onChunk) {
     // Network-level failure (DNS, CORS/permission block, timeout). Keep the
     // browser's own message — it distinguishes the cases in devtools and UI.
     const raw = String(err && err.message ? err.message : err);
-    throw new Error("could not reach api.mistral.com — " + raw);
+    throw new Error("could not reach api.mistral.ai — " + raw);
   }
 
   if (!response.ok) {
     let detail = "HTTP " + response.status;
     try {
       const data = await response.json();
-      if (data && data.message) detail = data.message;
+      if (data && (data.message || data.detail)) detail = data.message || data.detail;
     } catch (err) {
       // keep the HTTP status as the detail
     }
@@ -334,7 +334,7 @@ async function testMistralKey(key) {
     let detail = "HTTP " + response.status;
     try {
       const data = await response.json();
-      if (data && data.message) detail = data.message;
+      if (data && (data.message || data.detail)) detail = data.message || data.detail;
     } catch (err) {
       // keep the HTTP status
     }
@@ -344,8 +344,8 @@ async function testMistralKey(key) {
     return {
       ok: false,
       message:
-        "could not reach api.mistral.com (" + raw + "). " +
-        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.com."
+        "could not reach api.mistral.ai (" + raw + "). " +
+        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.ai."
     };
   }
 }

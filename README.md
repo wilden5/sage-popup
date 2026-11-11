@@ -41,10 +41,10 @@ free tier is enough). It enables the AI explanations — selected phrases
 and words Oxford does not know. Open the extension's settings page, paste
 the key, **Test key**, **Save**. The key is stored only in
 `chrome.storage.local` in your browser and is sent only to
-`api.mistral.com`. Without a key everything Oxford keeps working; AI
+`api.mistral.ai`. Without a key everything Oxford keeps working; AI
 fallback simply degrades to the usual "no definition found" UI.
 
-Access to `api.mistral.com` is an **optional** host permission: the
+Access to `api.mistral.ai` is an **optional** host permission: the
 settings page shows its state and has a **Grant access** button (the
 same prompt appears automatically on **Test key**). Firefox does not
 grant newly added host permissions on extension reload — after
@@ -84,7 +84,7 @@ selection → floating icon → click
   phrase (2+ words) or word missing from Oxford:
   → content.js opens a runtime port to background.js
   → background.js streams a Mistral chat completion
-      (POST https://api.mistral.com/v1/chat/completions, stream:true,
+      (POST https://api.mistral.ai/v1/chat/completions, stream:true,
        Bearer key from chrome.storage.local)
   → content.js renders the streamed chunks as the same numbered list
 ```
@@ -100,7 +100,7 @@ selection → floating icon → click
 ## Permissions
 
 - `host_permissions: https://www.oxfordlearnersdictionaries.com/*` and
-  `optional_host_permissions: https://api.mistral.com/*` — only these.
+  `optional_host_permissions: https://api.mistral.ai/*` — only these.
   The extension reads every page
   you select text on (any site) but sends data only to the Oxford dictionary
   domain and, for the AI fallback, to the Mistral API with your own key.

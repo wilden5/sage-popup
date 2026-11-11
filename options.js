@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const MISTRAL_ORIGIN = "https://api.mistral.com/*";
+  const MISTRAL_ORIGIN = "https://api.mistral.ai/*";
   const input = document.getElementById("key");
   const status = document.getElementById("status");
   const perm = document.getElementById("perm");
@@ -43,9 +43,9 @@
   function refreshPerm() {
     return hasAccess().then((granted) => {
       if (granted) {
-        setPerm("✓ Access to api.mistral.com granted", "ok");
+        setPerm("✓ Access to api.mistral.ai granted", "ok");
       } else {
-        setPerm("✗ No access to api.mistral.com — click “Grant access”", "err");
+        setPerm("✗ No access to api.mistral.ai — click “Grant access”", "err");
       }
       grantBtn.style.display = granted ? "none" : "inline-block";
       return granted;
@@ -81,7 +81,7 @@
         setStatus("Access granted. You can test the key now.", "ok");
       } else {
         setStatus(
-          "Access was not granted. Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.com.",
+          "Access was not granted. Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.ai.",
           "err"
         );
       }
@@ -99,7 +99,7 @@
       if (!granted) granted = await requestAccess();
       refreshPerm();
       if (!granted) {
-        setStatus("No access to api.mistral.com — the browser blocks the request. Click “Grant access”.", "err");
+        setStatus("No access to api.mistral.ai — the browser blocks the request. Click “Grant access”.", "err");
         return;
       }
       try {
