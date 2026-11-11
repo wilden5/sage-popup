@@ -9,7 +9,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const src = fs.readFileSync(path.join(__dirname, "content.js"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "src", "content.js"), "utf8");
 const start = src.indexOf("/* ai-items-start");
 const end = src.indexOf("/* ai-items-end");
 if (start === -1 || end === -1) {

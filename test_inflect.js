@@ -8,7 +8,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const src = fs.readFileSync(path.join(__dirname, "background.js"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "src", "background.js"), "utf8");
 const pure = src.split("// ---- extension wiring")[0];
 
 // eslint-disable-next-line no-eval
