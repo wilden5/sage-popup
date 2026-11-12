@@ -1,0 +1,4 @@
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"Hello"}]}}]}
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"brave "},{"text":"new world"}]}}]}
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"!"}]},"finishReason":"STOP"}]}
+data: {"promptFeedback":{"blockReason":"SAFETY"}}
