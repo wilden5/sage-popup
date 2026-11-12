@@ -16,20 +16,24 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # npm install, not npm ci: there is no package-lock.json (agents are
-      # forbidden to run installs, so nobody generates it; revisit at M5).
+      # npm install, not npm ci: there is no package-lock.json by design
+      # (agents are forbidden to run installs, so nobody generates one).
       - name: "npm install"
         run: npm install
       - name: "build"
         run: npm run build
       - name: "Unit tests — inflection, prompts, AI answer parsing"
-        run: |
-          node test_inflect.js
-          node test_ai_parse.js
+        run: npm test
       - name: "Live checks — Oxford markup, api.mistral.ai"
         run: node scripts/live-check.js
+      - name: "Upload build zip"
+        uses: actions/upload-artifact@v5
+        with:
+          name: oxford-popup-ts
+          path: dist/oxford-popup-ts.zip

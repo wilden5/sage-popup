@@ -52,13 +52,30 @@ re-loading a temporary add-on, click **Grant access** once and the AI
 fallback works again. It can also be enabled manually:
 `about:addons → Oxford Popup → «Разрешения и данные»`.
 
-## Install
+## Development
+
+The repo no longer loads as-is — it must be built first.
+
+Prerequisites: Node.js >= 22 and the `zip` CLI (the build zips `dist/`
+through the system `zip`; it is present on GitHub runners, Linux and macOS —
+on Windows use WSL or Git Bash).
+
+```sh
+npm install
+npm run build
+```
+
+Outputs: a loadable `dist/` folder and `dist/oxford-popup-ts.zip` (the zip
+contains ONLY the `dist` contents at the zip root — the same layout as the
+shipped v1.1.5).
+
+## Load the extension
 
 ### Firefox (temporary, until the browser closes)
 
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on…**
-3. Pick `manifest.json` from this folder
+3. Pick `dist/manifest.json`
 
 For a permanent install, the extension must be signed via
 [addons.mozilla.org](https://addons.mozilla.org/) (or self-distribution with
@@ -69,7 +86,7 @@ For a permanent install, the extension must be signed via
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked**
-4. Pick this folder
+4. Pick the `dist` folder
 
 ## How it works
 
@@ -89,13 +106,44 @@ selection → floating icon → click
   → content.js renders the streamed chunks as the same numbered list
 ```
 
-- `content.js` — selection handling, the floating icon, the popup, HTML
-  parsing, streaming AI rendering
-- `background.js` — fetching definition pages + a small in-memory cache,
-  Mistral streaming over a runtime port
+- `src/background/` — `inflect.ts`, `lookup.ts`, `ai-prompt.ts`,
+  `stream-mistral.ts`, `main.ts`: fetching definition pages + a small
+  in-memory cache, Mistral streaming over a runtime port
+- `src/content/` — `dom.ts`, `normalize.ts`, `parser.ts`, `parse-ai-items.ts`,
+  `audio.ts`, `tts.ts`, `popup.ts`, `main.ts`: selection handling, the
+  floating icon, the popup, HTML parsing, streaming AI rendering
+- `src/options/main.ts` — the API-key settings page logic
+- `src/shared/types.ts` — message protocol types
 - `content.css` — popup styles
-- `options.html` / `options.js` — the API-key settings page
+- `options.html` — the settings page markup
+- `manifest.json` — the extension manifest
 - `make_icons.py` — regenerates the icons (optional, Python stdlib only)
+
+The build bundles the TypeScript sources into `dist/background.js`,
+`dist/content.js` and `dist/options.js`.
+
+## Project structure
+
+```
+oxford-popup/
+├─ src/
+│  ├─ background/    # inflect, lookup, ai-prompt, stream-mistral, main
+│  ├─ content/       # dom, normalize, parser, parse-ai-items, audio, tts, popup, main
+│  ├─ options/       # main.ts (settings page logic)
+│  └─ shared/        # types.ts (message protocol)
+├─ tests/            # vitest specs
+│  └─ fixtures/      # committed Oxford HTML pages (parser regression suite)
+├─ scripts/          # build.mjs, fetch-fixtures.mjs, live-check.js
+├─ dist/             # build output (gitignored) — load this folder / zip
+├─ content.css  options.html  manifest.json  icons/
+└─ package.json  tsconfig.json  vitest.config.ts
+```
+
+## Test
+
+`npm test` runs vitest fully offline: inflection + prompt, AI answer
+parsing, and the Oxford parser fixtures (`tests/fixtures/`).
+`scripts/live-check.js` stays the separate online canary.
 
 ## Permissions
 
@@ -109,7 +157,10 @@ selection → floating icon → click
 ## Maintenance
 
 If Oxford changes their markup, fix the selectors in `parseEntry()` in
-`content.js`:
+`src/content/parser.ts` (the selector table below stays). The committed
+fixtures in `tests/fixtures/` plus the parser tests guard it offline;
+refresh the fixtures with `scripts/fetch-fixtures.mjs` and commit the
+refreshed files.
 
 | what | selector |
 | --- | --- |
@@ -127,16 +178,21 @@ If Oxford changes their markup, fix the selectors in `parseEntry()` in
 `.github/workflows/tests.yml` runs on every push to `main`, daily at 09:30
 Minsk time, and manually (Actions tab → "Run workflow"):
 
-1. **Unit tests** — `test_inflect.js` (inflection candidates + AI prompt
-   contract), `test_ai_parse.js` (streamed answer parsing). Plain Node, no
-   dependencies.
-2. **Live checks** — `scripts/live-check.js` fetches real Oxford pages
+1. **Install** — `npm install` (no `package-lock.json` by design).
+2. **Build** — type-check (`tsc --noEmit`) + esbuild bundles into `dist/`
+   + zip of the `dist` contents into `dist/oxford-popup-ts.zip`.
+3. **Unit tests** — `npm test` (vitest, fully offline: inflection + prompt,
+   AI answer parsing, Oxford parser fixtures).
+4. **Live checks** — `scripts/live-check.js` fetches real Oxford pages
    (`cocoa`, `house`, `walk`) and asserts every markup marker the parser
    depends on (headword, def, phons_br, pron-uk, data-src-mp3, senses lists,
    CEFR symbols), plus that `api.mistral.ai` is alive (200/401). If Oxford
    changes its markup or the API domain breaks again, the run fails and
    GitHub emails the account owner (default "workflow failure on schedule"
    notifications — see Settings → Notifications → Actions).
+5. **Artifact** — `dist/oxford-popup-ts.zip` is uploaded as a run artifact
+   (`oxford-popup-ts`), so the built zip can be downloaded from the Actions
+   run page.
 
 One gotcha: GitHub disables **scheduled** workflows after 60 days of repo
 inactivity; regular pushes keep it alive.

@@ -2,10 +2,9 @@
   "compilerOptions": {
     "strict": true,
     "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["chrome"],
     "noUncheckedIndexedAccess": true,
-    "allowJs": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "esModuleInterop": true,

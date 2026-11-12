@@ -2,27 +2,27 @@
   "use strict";
 
   const MISTRAL_ORIGIN = "https://api.mistral.ai/*";
-  const input = document.getElementById("key");
-  const status = document.getElementById("status");
-  const perm = document.getElementById("perm");
-  const grantBtn = document.getElementById("grant");
+  const input = document.getElementById("key") as HTMLInputElement;
+  const status = document.getElementById("status") as HTMLElement;
+  const perm = document.getElementById("perm") as HTMLElement;
+  const grantBtn = document.getElementById("grant") as HTMLButtonElement;
 
-  function setStatus(text, cls) {
+  function setStatus(text: string, cls: string) {
     status.textContent = text;
     status.className = cls || "";
   }
 
-  function setPerm(text, cls) {
+  function setPerm(text: string, cls: string) {
     perm.textContent = text;
     perm.className = cls || "";
   }
 
   // chrome.permissions returns promises in Firefox and callbacks in Chrome —
   // support both shapes.
-  function permCall(method, args) {
+  function permCall(method: "contains" | "request", args: { origins: string[] }): Promise<boolean> {
     return new Promise((resolve) => {
       let settled = false;
-      const done = (value) => {
+      const done = (value: unknown) => {
         if (!settled) {
           settled = true;
           resolve(!!value);
@@ -65,7 +65,7 @@
 
   refreshPerm();
 
-  document.getElementById("save").addEventListener("click", () => {
+  (document.getElementById("save") as HTMLButtonElement).addEventListener("click", () => {
     const key = input.value.trim();
     chrome.storage.local
       .set({ mistralApiKey: key })
@@ -88,7 +88,7 @@
     });
   });
 
-  document.getElementById("test").addEventListener("click", () => {
+  (document.getElementById("test") as HTMLButtonElement).addEventListener("click", () => {
     const key = input.value.trim();
     if (!key) {
       setStatus("Paste the key first.", "err");
