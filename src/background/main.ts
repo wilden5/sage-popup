@@ -23,6 +23,8 @@
 import { lookup } from "./lookup";
 import { buildAiPrompt } from "./ai-prompt";
 import { streamOpenAi } from "./stream-openai";
+import { streamAnthropic } from "./stream-anthropic";
+import { streamGemini } from "./stream-gemini";
 import {
   DEFAULT_PROVIDER_ID,
   apiKeyFor,
@@ -79,29 +81,22 @@ chrome.runtime.onConnect.addListener((port) => {
     }
     const prompt = buildAiPrompt(request.word, request.sentence, request.isPhrase);
     try {
+      const onChunk = (text: string) => {
+        try {
+          port.postMessage({ type: "chunk", text } as AiPortMessage);
+        } catch (err) {
+          // popup already closed — stop caring about further chunks
+          throw err;
+        }
+      };
       if (provider.adapterKind === "openai") {
-        await streamOpenAi(
-          provider.chatEndpoint,
-          apiKey,
-          modelFor(snapshot, id),
-          prompt,
-          (text) => {
-            try {
-              port.postMessage({ type: "chunk", text } as AiPortMessage);
-            } catch (err) {
-              // popup already closed — stop caring about further chunks
-              throw err;
-            }
-          }
-        );
-        port.postMessage({ type: "done" } as AiPortMessage);
+        await streamOpenAi(provider.chatEndpoint, apiKey, modelFor(snapshot, id), prompt, onChunk);
+      } else if (provider.adapterKind === "anthropic") {
+        await streamAnthropic(provider.chatEndpoint, apiKey, modelFor(snapshot, id), prompt, onChunk);
       } else {
-        // anthropic / gemini adapters land in B3 (MULTI_PROVIDER.md §4)
-        port.postMessage({
-          type: "error",
-          message: "provider adapter not available yet"
-        } as AiPortMessage);
+        await streamGemini(provider.chatEndpoint, apiKey, modelFor(snapshot, id), prompt, onChunk);
       }
+      port.postMessage({ type: "done" } as AiPortMessage);
     } catch (err: any) {
       try {
         port.postMessage({
