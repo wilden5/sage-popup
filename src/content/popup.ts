@@ -14,15 +14,32 @@ import { parseAiItems } from "./parse-ai-items";
 import { playAudio } from "./audio";
 import { speakText } from "./tts";
 import { hidePopup, SPEAKER_SVG, MISTRAL_SVG, SEARCH_URL } from "./main";
-import type { AiPortMessage, OxfordLookupResponse } from "../shared/types";
+import type { AiPortMessage, OxfordLookupResponse, StorageSnapshot } from "../shared/types";
+import { providerById, selectedProvider } from "../shared/providers";
 
 /** The open popup element (null while no popup is shown). */
 export const popupState: { node: HTMLDivElement | null } = { node: null };
 
 let anchorX = 40;
 let anchorY = 40; // viewport point below the word the popup is anchored to
-let aiPort: chrome.runtime.Port | null = null; // runtime port streaming the Mistral answer
+let aiPort: chrome.runtime.Port | null = null; // runtime port streaming the AI answer
 let aiWord = ""; // word/phrase of the current AI answer
+
+// Selected BYOK provider for the badge/texts. Defaults to Mistral so the
+// very first render (before the async read resolves) is byte-identical
+// to v1.1.5; the read resolves long before any user selection.
+let aiLabel = "Mistral";
+let aiIsMistral = true;
+chrome.storage.local
+  .get(null)
+  .then((snap) => {
+    const row = providerById(selectedProvider(snap as StorageSnapshot));
+    if (row) {
+      aiLabel = row.label;
+      aiIsMistral = row.id === "mistral";
+    }
+  })
+  .catch(() => {});
 
 export function closeAiPort(): void {
   if (aiPort) {
@@ -43,7 +60,7 @@ export function renderPopup(word: string, x: number, y: number, aiMode: boolean)
 
   const status = el("div", "oxp-status");
   status.append(el("span", "oxp-status-word", word));
-  status.append(document.createTextNode(aiMode ? " — asking Mistral…" : " — looking up…"));
+  status.append(document.createTextNode(aiMode ? " — asking " + aiLabel + "…" : " — looking up…"));
   if (aiMode) status.append(buildAiBadge());
   popup.append(status);
 
@@ -215,20 +232,26 @@ export function buildNotFound(word: string): DocumentFragment {
   return box;
 }
 
-// ----------------------------------------------------------------- Mistral
+// --------------------------------------------------------------------- AI
 
 export function buildAiBadge(): HTMLSpanElement {
-  const badge = el("span", "oxp-ai-badge");
-  badge.title = "Explained by Mistral AI";
-  badge.innerHTML = MISTRAL_SVG;
+  if (aiIsMistral) {
+    const badge = el("span", "oxp-ai-badge");
+    badge.title = "Explained by Mistral AI";
+    badge.innerHTML = MISTRAL_SVG;
+    return badge;
+  }
+  const badge = el("span", "oxp-ai-badge oxp-ai-text-badge", aiLabel);
+  badge.title = "Explained by " + aiLabel;
   return badge;
 }
 
 /**
- * Ask Mistral to explain word/phrase and stream the answer into the popup.
- * `restore` rebuilds the previous (Oxford) UI when the user has no API
- * key yet; `renderInitial` re-renders the "asking Mistral…" stub — false
- * for the phrase path where renderPopup() already drew it.
+ * Ask the selected provider to explain word/phrase and stream the answer
+ * into the popup. `restore` rebuilds the previous (Oxford) UI when the
+ * user has no API key yet; `renderInitial` re-renders the " — asking…"
+ * stub with the provider badge — false for the phrase path where
+ * renderPopup() already drew it.
  */
 export function tryAi(
   word: string,
@@ -245,7 +268,7 @@ export function tryAi(
     clearChildren(popupState.node);
     const status = el("div", "oxp-status");
     status.append(el("span", "oxp-status-word", word));
-    status.append(document.createTextNode(" — asking Mistral…"));
+    status.append(document.createTextNode(" — asking " + aiLabel + "…"));
     status.append(buildAiBadge());
     popupState.node.append(status);
     placePopup();
@@ -271,9 +294,9 @@ export function tryAi(
     } else if (msg.type === "error") {
       closeAiPort();
       clearChildren(popupState.node);
-      popupState.node.append(buildStatus(word, "Mistral request failed"));
+      popupState.node.append(buildStatus(word, aiLabel + " request failed"));
       popupState.node.append(el("div", "oxp-detail", String(msg.message || "unknown error")));
-      // The most common cause is a missing api.mistral.ai permission —
+      // The most common cause is a missing provider-origin permission —
       // send the user straight to the settings page that can grant it.
       const footer = el("div", "oxp-footer");
       const btn = el("button", "oxp-btn", "Open settings");
@@ -334,7 +357,9 @@ export function renderAiAnswer(buffer: string, done: boolean): void {
 
   if (done) {
     const footer = el("div", "oxp-footer");
-    footer.append(el("span", "oxp-ai-note", "Explained by Mistral AI"));
+    footer.append(
+      el("span", "oxp-ai-note", aiIsMistral ? "Explained by Mistral AI" : "Explained by " + aiLabel)
+    );
     popupState.node.append(footer);
   }
   placePopup(); // content height changed — re-fit into the viewport
@@ -352,7 +377,9 @@ export function renderAiFallbackOnly(): void {
 export function buildNoKey(word: string): void {
   if (!popupState.node) return;
   clearChildren(popupState.node);
-  popupState.node.append(buildStatus(word, "AI explanations need a Mistral API key"));
+  // a/an before the label ("an OpenAI", "a Mistral") — byte-identical for mistral.
+  const article = /^[aeiou]/i.test(aiLabel) ? "an" : "a";
+  popupState.node.append(buildStatus(word, "AI explanations need " + article + " " + aiLabel + " API key"));
   const footer = el("div", "oxp-footer");
   const btn = el("button", "oxp-btn", "Open settings");
   btn.type = "button";

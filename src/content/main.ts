@@ -6,9 +6,10 @@
  *   2. Click the button -> a minimal popup loads and shows the word's
  *      Oxford Learner's Dictionaries definition.
  *   3. Multi-word selections, and single words Oxford does not know, fall
- *      back to a Mistral AI explanation streamed straight into the popup
- *      (marked with the Mistral badge). Needs an API key in settings;
- *      without one the popup keeps working Oxford-only.
+ *      back to an AI explanation from the user's selected BYOK provider
+ *      streamed straight into the popup (marked with the provider badge).
+ *      Needs an API key in settings; without one the popup keeps working
+ *      Oxford-only.
  *
  * Layout note: the renderers and the lookup/AI flow live in ./popup (which
  * owns the popup node via the popupState holder); the pure helpers live in
@@ -99,7 +100,7 @@ function hideAll(): void {
 
 /**
  * A short slice of the surrounding paragraph (~330 chars) around the
- * selection, sent to Mistral as context. Best effort: an empty string is
+ * selection, sent to the selected provider as context. Best effort: an empty string is
  * fine — the prompt works without it.
  */
 function sentenceContext(): string {
@@ -195,7 +196,7 @@ function openPopup(): void {
   hideIcon();
   renderPopup(word, x, y, isPhrase);
   if (isPhrase) {
-    // Phrases go straight to Mistral (per design: context explanation).
+    // Phrases go straight to the selected provider (per design: context explanation).
     tryAi(word, sentence, true, () => buildNoKey(word), false);
   } else {
     void lookupAndRender(word, sentence);

@@ -21,8 +21,9 @@ Works in both Chrome and Firefox (Manifest V3).
   the viewport edge (with its own scrollbar for long entries)
 - if the word is not found — a link to an Oxford search
 - phrases (2+ selected words) and words missing from Oxford are explained
-  by Mistral AI, streamed into the same popup and marked with the Mistral
-  badge (uses your own API key — see Settings)
+  by an AI provider of your choice, streamed into the same popup and
+  marked with the provider badge — the Mistral logo for Mistral,
+  the provider's name for the others (uses your own API key — see Settings)
 
 Inflected forms are handled automatically: the original selection is tried
 first (many inflections like *went* or *knives* have their own Oxford
@@ -35,22 +36,34 @@ with a click outside or `Esc`.
 
 ## Settings
 
-One optional setting: your personal
-[Mistral API key](https://console.mistral.ai/api-keys) (La Plateforme,
-free tier is enough). It enables the AI explanations — selected phrases
-and words Oxford does not know. Open the extension's settings page, paste
-the key, **Test key**, **Save**. The key is stored only in
-`chrome.storage.local` in your browser and is sent only to
-`api.mistral.ai`. Without a key everything Oxford keeps working; AI
-fallback simply degrades to the usual "no definition found" UI.
+The AI fallback is BYOK ("bring your own key"): you pick a provider and
+paste your own API key. The settings page has:
 
-Access to `api.mistral.ai` is an **optional** host permission: the
-settings page shows its state and has a **Grant access** button (the
-same prompt appears automatically on **Test key**). Firefox does not
-grant newly added host permissions on extension reload — after
-re-loading a temporary add-on, click **Grant access** once and the AI
-fallback works again. It can also be enabled manually:
+- a **provider dropdown** with the 8 supported providers — Mistral,
+  OpenAI, Groq, OpenRouter, DeepSeek, xAI, Anthropic, Google Gemini;
+- a per-provider **API key** field (paste, **Test key**, **Save**) and a
+  per-provider **model** field. The model field is free text: the
+  placeholder shows the built-in suggestion for that provider, which may
+  be stale — type any model your provider offers;
+- keys are stored only in `chrome.storage.local` in your browser and are
+  sent only to the selected provider's endpoint over HTTPS — no server,
+  no analytics.
+
+The default provider is Mistral, so existing v1.1.5 users keep working
+unchanged: a previously saved Mistral key is migrated read-only and keeps
+working as-is, with zero behavior change.
+
+Each provider origin is an **optional** host permission: the settings
+page shows its state and has a **Grant access** button (the same prompt
+appears automatically on **Test key**); switching the provider re-checks
+the new origin. Firefox does not grant newly added host permissions on
+extension reload — after re-loading a temporary add-on, click
+**Grant access** once and the AI fallback works again. It can also be
+enabled manually:
 `about:addons → Oxford Popup → «Разрешения и данные»`.
+
+Without a key for the selected provider everything Oxford keeps working;
+AI fallback simply degrades to the usual "no definition found" UI.
 
 ## Development
 
@@ -100,20 +113,24 @@ selection → floating icon → click
   → content.js parses it with DOMParser and renders the popup
   phrase (2+ words) or word missing from Oxford:
   → content.js opens a runtime port to background.js
-  → background.js streams a Mistral chat completion
-      (POST https://api.mistral.ai/v1/chat/completions, stream:true,
-       Bearer key from chrome.storage.local)
+  → background.js streams a chat completion from the selected provider
+      (POST to that provider's streaming endpoint, the key from
+      chrome.storage.local is sent only to that provider —
+      OpenAI-compatible providers, Anthropic and Gemini each have their
+      own streaming adapter)
   → content.js renders the streamed chunks as the same numbered list
 ```
 
 - `src/background/` — `inflect.ts`, `lookup.ts`, `ai-prompt.ts`,
-  `stream-mistral.ts`, `main.ts`: fetching definition pages + a small
-  in-memory cache, Mistral streaming over a runtime port
+  `stream-openai.ts`, `stream-anthropic.ts`, `stream-gemini.ts`, `main.ts`:
+  fetching definition pages + a small in-memory cache, multi-provider
+  streaming over a runtime port
 - `src/content/` — `dom.ts`, `normalize.ts`, `parser.ts`, `parse-ai-items.ts`,
   `audio.ts`, `tts.ts`, `popup.ts`, `main.ts`: selection handling, the
   floating icon, the popup, HTML parsing, streaming AI rendering
-- `src/options/main.ts` — the API-key settings page logic
+- `src/options/main.ts` — the provider / API-key / model settings page logic
 - `src/shared/types.ts` — message protocol types
+- `src/shared/providers.ts` — the provider registry + storage helpers
 - `content.css` — popup styles
 - `options.html` — the settings page markup
 - `manifest.json` — the extension manifest
@@ -127,10 +144,10 @@ The build bundles the TypeScript sources into `dist/background.js`,
 ```
 oxford-popup/
 ├─ src/
-│  ├─ background/    # inflect, lookup, ai-prompt, stream-mistral, main
+│  ├─ background/    # inflect, lookup, ai-prompt, stream-openai, stream-anthropic, stream-gemini, main
 │  ├─ content/       # dom, normalize, parser, parse-ai-items, audio, tts, popup, main
-│  ├─ options/       # main.ts (settings page logic)
-│  └─ shared/        # types.ts (message protocol)
+│  ├─ options/       # main.ts (provider/key/model settings page logic)
+│  └─ shared/        # types.ts (message protocol), providers.ts (provider registry + storage helpers)
 ├─ tests/            # vitest specs
 │  └─ fixtures/      # committed Oxford HTML pages (parser regression suite)
 ├─ scripts/          # build.mjs, fetch-fixtures.mjs, live-check.js
@@ -147,12 +164,15 @@ parsing, and the Oxford parser fixtures (`tests/fixtures/`).
 
 ## Permissions
 
-- `host_permissions: https://www.oxfordlearnersdictionaries.com/*` and
-  `optional_host_permissions: https://api.mistral.ai/*` — only these.
+- `host_permissions: https://www.oxfordlearnersdictionaries.com/*` — only
+  this one. `optional_host_permissions` lists the 8 provider origins
+  (`api.mistral.ai`, `api.openai.com`, `api.groq.com`, `openrouter.ai`,
+  `api.deepseek.com`, `api.x.ai`, `api.anthropic.com`,
+  `generativelanguage.googleapis.com`) — nothing else.
   The extension reads every page
   you select text on (any site) but sends data only to the Oxford dictionary
-  domain and, for the AI fallback, to the Mistral API with your own key.
-  The key itself stays in `chrome.storage.local`. No analytics.
+  domain and, for the AI fallback, to the selected provider with your own
+  key. The key itself stays in `chrome.storage.local`. No analytics.
 
 ## Maintenance
 
@@ -175,7 +195,8 @@ refreshed files.
 
 ## CI (GitHub Actions, free tier)
 
-`.github/workflows/tests.yml` runs on every push to `main`, daily at 09:30
+`.github/workflows/tests.yml` runs on every push to `main` and `byok`,
+daily at 09:30
 Minsk time, and manually (Actions tab → "Run workflow"):
 
 1. **Install** — `npm install` (no `package-lock.json` by design).

@@ -30,7 +30,9 @@
       .hint a {
         color: #1a56a0;
       }
-      #key {
+      #key,
+      #provider,
+      #model {
         font: inherit;
         width: 100%;
         box-sizing: border-box;
@@ -38,8 +40,11 @@
         border: 1px solid #d0d4d9;
         border-radius: 6px;
         margin-bottom: 10px;
+        background: #fff;
       }
-      #key:focus {
+      #key:focus,
+      #provider:focus,
+      #model:focus {
         outline: none;
         border-color: #1a56a0;
       }
@@ -80,15 +85,20 @@
   </head>
   <body>
     <h1>Oxford Popup</h1>
-    <label for="key">Mistral API key</label>
+    <label for="provider">Provider</label>
+    <select id="provider"></select>
+    <label for="key">API key</label>
     <p class="hint">
       Needed only for AI explanations: selected phrases and words missing from
-      Oxford. Get a free key at
+      Oxford. The key is stored only in this browser and sent only to the
+      selected provider. Without a key the extension keeps working
+      Oxford-only. Get a key in your provider's console, e.g.
       <a href="https://console.mistral.ai/api-keys" target="_blank" rel="noopener noreferrer">console.mistral.ai</a>.
-      The key is stored only in this browser and sent only to api.mistral.ai.
-      Without a key the extension keeps working Oxford-only.
     </p>
     <input id="key" type="password" autocomplete="off" placeholder="paste your key here" />
+    <label for="model">Model</label>
+    <p class="hint">Leave empty for the provider's suggested model.</p>
+    <input id="model" type="text" autocomplete="off" />
     <button id="save">Save</button>
     <button id="test">Test key</button>
     <button id="grant">Grant access</button>

@@ -6,27 +6,40 @@
  *     likely base form when the word itself is not in the dictionary) and
  *     hands the raw HTML back to the content script (which parses it with
  *     DOMParser, unavailable inside Chrome's MV3 service worker).
- *  2. Streams "explain this word/phrase" answers from the Mistral API
- *     (https://api.mistral.ai) over a runtime port, used for multi-word
- *     selections and for words Oxford does not know. The API key lives in
- *     chrome.storage.local (set from the options page) — never in code.
+ *  2. Streams "explain this word/phrase" answers from the user's selected
+ *     BYOK provider (registry in src/shared/providers.ts, MULTI_PROVIDER.md
+ *     §2/§4) over a runtime port, used for multi-word selections and for
+ *     words Oxford does not know. API keys live in chrome.storage.local
+ *     (set from the options page) — never in code. The default provider is
+ *     Mistral, so existing users see zero behavior change.
  *
  * Works as a service worker (Chrome) and as an event page (Firefox).
  *
  * Layout note: the pure, dependency-free logic lives in the sibling modules
- * (inflect, lookup, ai-prompt, stream-mistral) that the unit tests import
+ * (inflect, lookup, ai-prompt, stream-openai, stream-anthropic,
+ * stream-gemini) that the unit tests import
  * directly. All chrome.* usage lives in this file.
  */
 
 import { lookup } from "./lookup";
 import { buildAiPrompt } from "./ai-prompt";
-import { MISTRAL_MODELS_URL, streamMistral } from "./stream-mistral";
+import { streamOpenAi } from "./stream-openai";
+import { streamAnthropic } from "./stream-anthropic";
+import { streamGemini } from "./stream-gemini";
+import {
+  DEFAULT_PROVIDER_ID,
+  apiKeyFor,
+  modelFor,
+  providerById,
+  selectedProvider
+} from "../shared/providers";
 import type {
   AiPortMessage,
   AiPortRequest,
   OxfordLookupRequest,
   OxfordTestKeyRequest,
-  OxfordTestKeyResult
+  OxfordTestKeyResult,
+  StorageSnapshot
 } from "../shared/types";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -40,7 +53,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
   if (message.type === "oxford-test-key") {
-    testMistralKey((message as OxfordTestKeyRequest).key).then(sendResponse);
+    const req = message as OxfordTestKeyRequest;
+    testProviderKey(req.provider, req.key).then(sendResponse);
     return true;
   }
   return undefined;
@@ -52,7 +66,10 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async (message) => {
     if (!message || !message.word) return;
     const request = message as AiPortRequest;
-    const apiKey = await getMistralKey();
+    const snapshot = await getStorageSnapshot();
+    const id = selectedProvider(snapshot);
+    const provider = providerById(id) ?? providerById(DEFAULT_PROVIDER_ID)!;
+    const apiKey = apiKeyFor(snapshot, id);
     if (!apiKey) {
       try {
         port.postMessage({ type: "no-key" } as AiPortMessage);
@@ -63,14 +80,21 @@ chrome.runtime.onConnect.addListener((port) => {
     }
     const prompt = buildAiPrompt(request.word, request.sentence, request.isPhrase);
     try {
-      await streamMistral(apiKey, prompt, (text) => {
+      const onChunk = (text: string) => {
         try {
           port.postMessage({ type: "chunk", text } as AiPortMessage);
         } catch (err) {
           // popup already closed — stop caring about further chunks
           throw err;
         }
-      });
+      };
+      if (provider.adapterKind === "openai") {
+        await streamOpenAi(provider.chatEndpoint, apiKey, modelFor(snapshot, id), prompt, onChunk);
+      } else if (provider.adapterKind === "anthropic") {
+        await streamAnthropic(provider.chatEndpoint, apiKey, modelFor(snapshot, id), prompt, onChunk);
+      } else {
+        await streamGemini(provider.chatEndpoint, apiKey, modelFor(snapshot, id), prompt, onChunk);
+      }
       port.postMessage({ type: "done" } as AiPortMessage);
     } catch (err: any) {
       try {
@@ -85,28 +109,36 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 });
 
-async function getMistralKey(): Promise<string> {
+/** The whole of chrome.storage.local as a plain snapshot for the shared helpers. */
+async function getStorageSnapshot(): Promise<StorageSnapshot> {
   try {
-    const data = await chrome.storage.local.get("mistralApiKey");
-    return (data && data.mistralApiKey) || "";
+    return (await chrome.storage.local.get(null)) as StorageSnapshot;
   } catch (err) {
-    return "";
+    return {};
   }
 }
 
-/** Cheap key check for the options page: GET /v1/models with the key. */
-async function testMistralKey(key: string): Promise<OxfordTestKeyResult> {
+/** Cheap key check for the options page: GET the registry's test-key endpoint. */
+async function testProviderKey(providerId: string, key: string): Promise<OxfordTestKeyResult> {
+  const row = providerById(String(providerId || "")) ?? providerById(DEFAULT_PROVIDER_ID)!;
   const trimmed = String(key || "").trim();
   if (!trimmed) return { ok: false, message: "empty key" };
+  const headers: Record<string, string> =
+    row.adapterKind === "anthropic"
+      ? { "x-api-key": trimmed, "anthropic-version": "2023-06-01" }
+      : row.adapterKind === "gemini"
+        ? { "x-goog-api-key": trimmed }
+        : { Authorization: "Bearer " + trimmed };
+  const hostname = new URL(row.testKeyEndpoint).hostname;
   try {
-    const response = await fetch(MISTRAL_MODELS_URL, {
-      headers: { Authorization: "Bearer " + trimmed }
-    });
+    const response = await fetch(row.testKeyEndpoint, { headers });
     if (response.ok) return { ok: true, message: "" };
     let detail = "HTTP " + response.status;
     try {
       const data = await response.json();
-      if (data && (data.message || data.detail)) detail = data.message || data.detail;
+      if (data && data.message) detail = data.message;
+      else if (data && data.detail) detail = data.detail;
+      else if (data && data.error && data.error.message) detail = data.error.message;
     } catch (err) {
       // keep the HTTP status
     }
@@ -116,8 +148,8 @@ async function testMistralKey(key: string): Promise<OxfordTestKeyResult> {
     return {
       ok: false,
       message:
-        "could not reach api.mistral.ai (" + raw + "). " +
-        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.ai."
+        "could not reach " + hostname + " (" + raw + "). " +
+        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable " + hostname + "."
     };
   }
 }

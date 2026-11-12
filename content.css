@@ -190,6 +190,19 @@
   display: block;
 }
 
+#oxp-popup .oxp-ai-badge.oxp-ai-text-badge {
+  line-height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  vertical-align: 1px;
+  border-radius: 4px;
+  background: #eef3f9;
+  color: #1a56a0;
+  cursor: help;
+}
+
 #oxp-popup .oxp-ex {
   display: block; /* example on its own line under the definition */
   margin-top: 2px;

@@ -27,10 +27,11 @@ export interface OxfordOpenOptionsMessage {
   type: "oxford-open-options";
 }
 
-/** chrome.runtime.sendMessage({ type: "oxford-test-key", key }) — options page -> background. */
+/** chrome.runtime.sendMessage({ type: "oxford-test-key", key, provider }) — options page -> background. */
 export interface OxfordTestKeyRequest {
   type: "oxford-test-key";
   key: string;
+  provider: string;
 }
 
 /** Async sendResponse to an oxford-test-key request. */
@@ -80,3 +81,21 @@ export type AiPortMessage =
   | AiDoneMessage
   | AiNoKeyMessage
   | AiErrorMessage;
+
+/**
+ * A plain snapshot of chrome.storage.local ({ [key]: unknown }) as seen by
+ * the pure storage helpers in src/shared/providers.ts — no chrome.* types.
+ */
+export interface StorageSnapshot {
+  [key: string]: unknown;
+}
+
+/** chrome.storage.local `aiKeys`: per-provider API keys. */
+export interface AiKeysMap {
+  [providerId: string]: string;
+}
+
+/** chrome.storage.local `aiModels`: per-provider model overrides. */
+export interface AiModelsMap {
+  [providerId: string]: string;
+}
