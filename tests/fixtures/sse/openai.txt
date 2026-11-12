@@ -1,0 +1,6 @@
+: keep-alive comment — a non-data line
+data: {"id":"chatcmpl-demo","choices":[{"delta":{"content":"Hello"}}]}
+data: {"id":"chatcmpl-demo","choices":[{"delta":{"reasoning_content":"let me think","content":" world"}}]}
+data: {"id":"chatcmpl-demo","choices":[{"delta":{"reasoning_content":"reasoning only"}}]}
+data: [DONE]
+data: {"id":"chatcmpl-demo","choices":[{"delta":{"content":"partial
