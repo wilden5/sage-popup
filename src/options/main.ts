@@ -111,7 +111,7 @@ import {
       const snapshot = (await chrome.storage.local.get(null)) as StorageSnapshot;
       const id = selectedProvider(snapshot);
       fill(id, snapshot);
-      if (input.value) setStatus("Your key is saved.", "ok");
+      if (input.value) setStatus("Your " + currentRow().label + " key is saved.", "ok");
     } catch (err) {
       // storage unavailable — leave the fields empty
     }
@@ -125,6 +125,14 @@ import {
       try {
         const snapshot = (await chrome.storage.local.get(null)) as StorageSnapshot;
         fill(select.value, snapshot);
+        // Recompute the status for the newly selected provider — never leave
+        // the previous provider's text visible.
+        const row = currentRow();
+        if (apiKeyFor(snapshot, row.id)) {
+          setStatus("Your " + row.label + " key is saved.", "ok");
+        } else {
+          setStatus("", "");
+        }
       } catch (err) {
         // storage unavailable — leave the fields as they are
       }
@@ -153,7 +161,12 @@ import {
         if (model) aiModels[id] = model;
         else delete aiModels[id]; // empty model -> the registry suggestion applies
         await chrome.storage.local.set({ aiKeys, aiModels, aiProvider: id });
-        setStatus(key ? "Saved." : "Saved (key cleared — AI disabled).", "ok");
+        setStatus(
+          key
+            ? "Saved for " + currentRow().label + "."
+            : "Saved for " + currentRow().label + " (key cleared — AI disabled).",
+          "ok"
+        );
       } catch (err) {
         setStatus("Could not save — storage error.", "err");
       }
