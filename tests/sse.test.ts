@@ -77,9 +77,7 @@ describe("parseOpenAiSseLine — OpenAI-compatible SSE", () => {
 
 describe("parseAnthropicSseLine — Anthropic SSE", () => {
   it("fixture lines classify as ignore/chunk/ignore/done/ignore", () => {
-    const lines = anthropicFixture.replace(/
-$/, "").split("
-");
+    const lines = anthropicFixture.replace(/\n$/, "").split("\n");
     expect(lines.map((l) => parseAnthropicSseLine(l).kind)).toEqual([
       "ignore", // "event: content_block_delta" — event line
       "chunk", // text_delta
@@ -124,9 +122,7 @@ $/, "").split("
 
 describe("parseGeminiSseLine — Gemini SSE", () => {
   it("fixture lines classify as chunk/chunk/done/ignore", () => {
-    const lines = geminiFixture.replace(/
-$/, "").split("
-");
+    const lines = geminiFixture.replace(/\n$/, "").split("\n");
     expect(lines.map((l) => parseGeminiSseLine(l).kind)).toEqual([
       "chunk", // one part
       "chunk", // two parts (joined)
