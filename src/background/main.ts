@@ -41,9 +41,6 @@ import type {
   StorageSnapshot
 } from "../shared/types";
 
-/** Kept locally for the oxford-test-key handler (unchanged v1.1.5 behavior). */
-const MISTRAL_MODELS_URL = "https://api.mistral.ai/v1/models";
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message) return undefined;
   if (message.type === "oxford-lookup") {
@@ -55,7 +52,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
   if (message.type === "oxford-test-key") {
-    testMistralKey((message as OxfordTestKeyRequest).key).then(sendResponse);
+    const req = message as OxfordTestKeyRequest;
+    testProviderKey(req.provider, req.key).then(sendResponse);
     return true;
   }
   return undefined;
@@ -119,19 +117,27 @@ async function getStorageSnapshot(): Promise<StorageSnapshot> {
   }
 }
 
-/** Cheap key check for the options page: GET /v1/models with the key. */
-async function testMistralKey(key: string): Promise<OxfordTestKeyResult> {
+/** Cheap key check for the options page: GET the registry's test-key endpoint. */
+async function testProviderKey(providerId: string, key: string): Promise<OxfordTestKeyResult> {
+  const row = providerById(String(providerId || "")) ?? providerById(DEFAULT_PROVIDER_ID)!;
   const trimmed = String(key || "").trim();
   if (!trimmed) return { ok: false, message: "empty key" };
+  const headers: Record<string, string> =
+    row.adapterKind === "anthropic"
+      ? { "x-api-key": trimmed, "anthropic-version": "2023-06-01" }
+      : row.adapterKind === "gemini"
+        ? { "x-goog-api-key": trimmed }
+        : { Authorization: "Bearer " + trimmed };
+  const hostname = new URL(row.testKeyEndpoint).hostname;
   try {
-    const response = await fetch(MISTRAL_MODELS_URL, {
-      headers: { Authorization: "Bearer " + trimmed }
-    });
+    const response = await fetch(row.testKeyEndpoint, { headers });
     if (response.ok) return { ok: true, message: "" };
     let detail = "HTTP " + response.status;
     try {
       const data = await response.json();
-      if (data && (data.message || data.detail)) detail = data.message || data.detail;
+      if (data && data.message) detail = data.message;
+      else if (data && data.detail) detail = data.detail;
+      else if (data && data.error && data.error.message) detail = data.error.message;
     } catch (err) {
       // keep the HTTP status
     }
@@ -141,8 +147,8 @@ async function testMistralKey(key: string): Promise<OxfordTestKeyResult> {
     return {
       ok: false,
       message:
-        "could not reach api.mistral.ai (" + raw + "). " +
-        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable api.mistral.ai."
+        "could not reach " + hostname + " (" + raw + "). " +
+        "If this is Firefox: about:addons → Oxford Popup → «Разрешения и данные» → enable " + hostname + "."
     };
   }
 }

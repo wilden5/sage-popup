@@ -27,10 +27,11 @@ export interface OxfordOpenOptionsMessage {
   type: "oxford-open-options";
 }
 
-/** chrome.runtime.sendMessage({ type: "oxford-test-key", key }) — options page -> background. */
+/** chrome.runtime.sendMessage({ type: "oxford-test-key", key, provider }) — options page -> background. */
 export interface OxfordTestKeyRequest {
   type: "oxford-test-key";
   key: string;
+  provider: string;
 }
 
 /** Async sendResponse to an oxford-test-key request. */
