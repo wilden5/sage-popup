@@ -11,9 +11,9 @@ import { describe, it, expect } from "vitest";
 
 import { parseEntry } from "../src/content/parser";
 
-import cocoaHtml from "../fixtures/cocoa.html?raw";
-import houseHtml from "../fixtures/house.html?raw";
-import walkHtml from "../fixtures/walk.html?raw";
+import cocoaHtml from "./fixtures/cocoa.html?raw";
+import houseHtml from "./fixtures/house.html?raw";
+import walkHtml from "./fixtures/walk.html?raw";
 
 const FIXTURES = [
   {
