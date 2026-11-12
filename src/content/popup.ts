@@ -14,15 +14,32 @@ import { parseAiItems } from "./parse-ai-items";
 import { playAudio } from "./audio";
 import { speakText } from "./tts";
 import { hidePopup, SPEAKER_SVG, MISTRAL_SVG, SEARCH_URL } from "./main";
-import type { AiPortMessage, OxfordLookupResponse } from "../shared/types";
+import type { AiPortMessage, OxfordLookupResponse, StorageSnapshot } from "../shared/types";
+import { providerById, selectedProvider } from "../shared/providers";
 
 /** The open popup element (null while no popup is shown). */
 export const popupState: { node: HTMLDivElement | null } = { node: null };
 
 let anchorX = 40;
 let anchorY = 40; // viewport point below the word the popup is anchored to
-let aiPort: chrome.runtime.Port | null = null; // runtime port streaming the Mistral answer
+let aiPort: chrome.runtime.Port | null = null; // runtime port streaming the AI answer
 let aiWord = ""; // word/phrase of the current AI answer
+
+// Selected BYOK provider for the badge/texts. Defaults to Mistral so the
+// very first render (before the async read resolves) is byte-identical
+// to v1.1.5; the read resolves long before any user selection.
+let aiLabel = "Mistral";
+let aiIsMistral = true;
+chrome.storage.local
+  .get(null)
+  .then((snap) => {
+    const row = providerById(selectedProvider(snap as StorageSnapshot));
+    if (row) {
+      aiLabel = row.label;
+      aiIsMistral = row.id === "mistral";
+    }
+  })
+  .catch(() => {});
 
 export function closeAiPort(): void {
   if (aiPort) {
@@ -218,9 +235,14 @@ export function buildNotFound(word: string): DocumentFragment {
 // ----------------------------------------------------------------- Mistral
 
 export function buildAiBadge(): HTMLSpanElement {
-  const badge = el("span", "oxp-ai-badge");
-  badge.title = "Explained by Mistral AI";
-  badge.innerHTML = MISTRAL_SVG;
+  if (aiIsMistral) {
+    const badge = el("span", "oxp-ai-badge");
+    badge.title = "Explained by Mistral AI";
+    badge.innerHTML = MISTRAL_SVG;
+    return badge;
+  }
+  const badge = el("span", "oxp-ai-badge oxp-ai-text-badge", aiLabel);
+  badge.title = "Explained by " + aiLabel;
   return badge;
 }
 
