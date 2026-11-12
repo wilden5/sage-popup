@@ -21,8 +21,8 @@ Works in both Chrome and Firefox (Manifest V3).
   the viewport edge (with its own scrollbar for long entries)
 - if the word is not found — a link to an Oxford search
 - phrases (2+ selected words) and words missing from Oxford are explained
-  by an AI provider of your choice (see Settings), streamed into the same
-  popup and marked with the provider badge — the Mistral logo for Mistral,
+  by an AI provider of your choice, streamed into the same popup and
+  marked with the provider badge — the Mistral logo for Mistral,
   the provider's name for the others (uses your own API key — see Settings)
 
 Inflected forms are handled automatically: the original selection is tried
@@ -114,7 +114,7 @@ selection → floating icon → click
   phrase (2+ words) or word missing from Oxford:
   → content.js opens a runtime port to background.js
   → background.js streams a chat completion from the selected provider
-      (POST to that provider's endpoint, stream:true, the key from
+      (POST to that provider's streaming endpoint, the key from
       chrome.storage.local is sent only to that provider —
       OpenAI-compatible providers, Anthropic and Gemini each have their
       own streaming adapter)
