@@ -16,7 +16,8 @@
  * Works as a service worker (Chrome) and as an event page (Firefox).
  *
  * Layout note: the pure, dependency-free logic lives in the sibling modules
- * (inflect, lookup, ai-prompt, stream-openai) that the unit tests import
+ * (inflect, lookup, ai-prompt, stream-openai, stream-anthropic,
+ * stream-gemini) that the unit tests import
  * directly. All chrome.* usage lives in this file.
  */
 
