@@ -377,7 +377,9 @@ export function renderAiFallbackOnly(): void {
 export function buildNoKey(word: string): void {
   if (!popupState.node) return;
   clearChildren(popupState.node);
-  popupState.node.append(buildStatus(word, "AI explanations need a " + aiLabel + " API key"));
+  // a/an before the label ("an OpenAI", "a Mistral") — byte-identical for mistral.
+  const article = /^[aeiou]/i.test(aiLabel) ? "an" : "a";
+  popupState.node.append(buildStatus(word, "AI explanations need " + article + " " + aiLabel + " API key"));
   const footer = el("div", "oxp-footer");
   const btn = el("button", "oxp-btn", "Open settings");
   btn.type = "button";
