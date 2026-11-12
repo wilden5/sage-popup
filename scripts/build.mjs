@@ -4,7 +4,7 @@
  * 
  * Steps:
  *   1. Type-check via tsc --noEmit (fail on errors)
- *   2. Bundle src/background/main.ts, src/content/main.ts, src/options.js with esbuild
+ *   2. Bundle src/background/main.ts, src/content/main.ts, src/options/main.ts with esbuild
  *   3. Copy static assets (manifest.json, content.css, options.html, README.md, icons/) to dist/
  *   4. Zip dist/ contents into dist/oxford-popup-ts.zip
  */
@@ -41,7 +41,7 @@ async function main() {
   const entries = [
     { in: 'src/background/main.ts', out: 'background.js' },
     { in: 'src/content/main.ts', out: 'content.js' },
-    { in: 'src/options.js', out: 'options.js' }
+    { in: 'src/options/main.ts', out: 'options.js' }
   ];
 
   for (const entry of entries) {
