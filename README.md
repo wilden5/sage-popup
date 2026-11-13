@@ -34,6 +34,13 @@ phrases only the last word is varied (*cocoa beans → cocoa bean*).
 The popup stays open while you scroll the page or the popup itself; close it
 with a click outside or `Esc`.
 
+## Screenshots
+
+| Firefox | Chrome |
+| --- | --- |
+| ![Sage Pop-Up word lookup in Firefox](docs/screenshots/sage-firefox-word.png) | ![Sage Pop-Up word lookup in Chrome](docs/screenshots/sage-chrome-word.png) |
+| ![Phrase explained by Mistral in Firefox](docs/screenshots/sage-firefox-phrase.png) | ![Phrase explained by Mistral in Chrome](docs/screenshots/sage-chrome-phrase.png) |
+
 ## Settings
 
 The AI fallback is BYOK ("bring your own key"): you pick a provider and
