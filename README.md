@@ -1,4 +1,4 @@
-# Oxford Popup
+# Sage Pop-Up
 
 A minimal browser extension: select a word, click the floating button that
 appears next to it, and see the word's definition from the
@@ -62,7 +62,7 @@ the new origin. Firefox does not grant newly added host permissions on
 extension reload — after re-loading a temporary add-on, click
 **Grant access** once and the AI fallback works again. It can also be
 enabled manually:
-`about:addons → Oxford Popup → «Разрешения и данные»`.
+`about:addons → Sage Pop-Up → «Разрешения и данные»`.
 
 Without a key for the selected provider everything Oxford keeps working;
 AI fallback simply degrades to the usual "no definition found" UI.
@@ -80,7 +80,7 @@ npm install
 npm run build
 ```
 
-Outputs: a loadable `dist/` folder and `dist/oxford-popup-ts.zip` (the zip
+Outputs: a loadable `dist/` folder and `dist/sage-popup.zip` (the zip
 contains ONLY the `dist` contents at the zip root — the same layout as the
 shipped v1.1.5).
 
@@ -144,7 +144,7 @@ The build bundles the TypeScript sources into `dist/background.js`,
 ## Project structure
 
 ```
-oxford-popup/
+sage-popup/
 ├─ src/
 │  ├─ background/    # inflect, lookup, ai-prompt, stream-openai, stream-anthropic, stream-gemini, main
 │  ├─ content/       # dom, normalize, parser, parse-ai-items, audio, tts, popup, main
@@ -197,13 +197,13 @@ refreshed files.
 
 ## CI (GitHub Actions, free tier)
 
-`.github/workflows/tests.yml` runs on every push to `main` and `byok`,
+`.github/workflows/tests.yml` runs on every push to `main` and the active round branches,
 daily at 09:30
 Minsk time, and manually (Actions tab → "Run workflow"):
 
 1. **Install** — `npm install` (no `package-lock.json` by design).
 2. **Build** — type-check (`tsc --noEmit`) + esbuild bundles into `dist/`
-   + zip of the `dist` contents into `dist/oxford-popup-ts.zip`.
+   + zip of the `dist` contents into `dist/sage-popup.zip`.
 3. **Unit tests** — `npm test` (vitest, fully offline: inflection + prompt,
    AI answer parsing, Oxford parser fixtures).
 4. **Live checks** — `scripts/live-check.js` fetches real Oxford pages
@@ -215,8 +215,8 @@ Minsk time, and manually (Actions tab → "Run workflow"):
    fails and
    GitHub emails the account owner (default "workflow failure on schedule"
    notifications — see Settings → Notifications → Actions).
-5. **Artifact** — `dist/oxford-popup-ts.zip` is uploaded as a run artifact
-   (`oxford-popup-ts`), so the built zip can be downloaded from the Actions
+5. **Artifact** — `dist/sage-popup.zip` is uploaded as a run artifact
+   (`sage-popup`), so the built zip can be downloaded from the Actions
    run page.
 
 One gotcha: GitHub disables **scheduled** workflows after 60 days of repo
