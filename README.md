@@ -51,8 +51,8 @@ paste your own API key. The settings page has:
   sent only to the selected provider's endpoint over HTTPS — no server,
   no analytics.
 
-The default provider is Mistral, so existing v1.1.5 users keep working
-unchanged: a previously saved Mistral key is migrated read-only and keeps
+The default provider is Mistral, so keys saved by earlier versions keep
+working unchanged: a previously saved Mistral key is migrated read-only and
 working as-is, with zero behavior change.
 
 Each provider origin is an **optional** host permission: the settings
@@ -81,8 +81,8 @@ npm run build
 ```
 
 Outputs: a loadable `dist/` folder and `dist/sage-popup.zip` (the zip
-contains ONLY the `dist` contents at the zip root — the same layout as the
-shipped v1.1.5).
+contains ONLY the `dist` contents at the zip root — the same layout as
+every shipped version).
 
 ## Load the extension
 
@@ -154,8 +154,8 @@ sage-popup/
 │  └─ fixtures/      # committed Oxford HTML pages (parser regression suite)
 ├─ scripts/          # build.mjs, fetch-fixtures.mjs, live-check.js
 ├─ dist/             # build output (gitignored) — load this folder / zip
-├─ content.css  options.html  manifest.json  icons/
-└─ package.json  tsconfig.json  vitest.config.ts
+├─ content.css  options.html  manifest.json  make_icons.py  icons/
+└─ package.json  tsconfig.json  vitest.config.ts  LICENSE  PRIVACY.md
 ```
 
 ## Test
@@ -221,3 +221,13 @@ Minsk time, and manually (Actions tab → "Run workflow"):
 
 One gotcha: GitHub disables **scheduled** workflows after 60 days of repo
 inactivity; regular pushes keep it alive.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+## Privacy
+
+See [PRIVACY.md](PRIVACY.md): no accounts, no analytics, no servers — the
+selected text goes only to the Oxford dictionary site and, for AI
+explanations, to the provider you pick with your own key.
