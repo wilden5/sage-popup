@@ -3,12 +3,12 @@ name: tests
 # Free plan: private repos get 2000 Actions minutes/month, this job uses ~2.
 on:
   push:
-    # main = merged milestones; ts-migration/byok/polish = merged rounds
-    # (specs: TS_MIGRATION.md, MULTI_PROVIDER.md); rename = S.A.G.E.
-    # rebrand rounds (spec: RENAME.md).
+    # main = merged milestones; feature branches = active/merged round
+    # branches (specs: TS_MIGRATION.md, MULTI_PROVIDER.md, RENAME.md,
+    # PUBLISH_PREP.md).
     # Every agent round gets a full check automatically
     # (Vibe reviews diffs, Actions proves green).
-    branches: [main, ts-migration, byok, polish, rename]
+    branches: [main, ts-migration, byok, polish, rename, publish-prep]
   schedule:
     # Daily 06:30 UTC = 09:30 Minsk (UTC+3). GitHub may delay cron runs a bit
     # during busy periods — fine for a once-a-day health check.

@@ -1,4 +1,4 @@
-# RENAME.md — S.A.G.E. rebrand before store submission
+# RENAME.md — Sage Pop-Up rebrand before store submission
 
 DECISION UPDATED by the owner (Denis, 2026-11-13, same day): the product name
 is **Sage Pop-Up** (this supersedes the earlier "S.A.G.E. – Select And Get
@@ -83,9 +83,10 @@ taken): `sage-popup@wilden5`. Not part of R1.
 
 - CI green on `rename`: build, 88 unit tests, live-check, artifact upload
   `sage-popup`.
-- After R1: `grep -rni "oxford-popup" --exclude-dir=.git .` → 0 matches and
-  `grep -rn "Oxford Popup" --exclude-dir=.git .` → 0 matches. All remaining
-  "oxford" strings must belong to §3.
+- After R1: `grep -rni "oxford-popup" --exclude-dir=.git --exclude RENAME.md .` → 0 matches and
+  `grep -rn "Oxford Popup" --exclude-dir=.git --exclude RENAME.md .` → 0 matches. All remaining
+  "oxford" strings must belong to §3. (RENAME.md itself lists the old
+  values on purpose — exclude it from the grep.)
 - No file under src/, tests/, or scripts/live-check.js changed.
 
 ## §6 Process rules (unchanged from previous phases)
@@ -102,8 +103,9 @@ ideas go in the report, not the code.
 
 1. Rename the GitHub repo `oxford-popup` → `sage-popup` (Settings → Rename;
    old links and git remotes keep working via redirect). Locally:
-   `git remote set-url origin git@github.com:wilden5/sage-popup.git`.
+   `git remote set-url origin https://github.com/wilden5/sage-popup.git`
+   (HTTPS — SSH requires a configured key; GitHub redirects old names for
+   both protocols).
 2. After review sign-off: merge `rename` → main manually
    (`git merge --no-ff rename`) — as always, only Denis's hands.
-3. The store-submission plan (AMO first, Edge Add-ons as a free extra, CWS
-   blocked by payment region) is tracked in Knowledge, not here.
+3. The store-submission plan is tracked in Knowledge, not here.
