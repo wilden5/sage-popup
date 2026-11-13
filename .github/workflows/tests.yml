@@ -7,7 +7,7 @@ on:
     # byok = multi-provider rounds (spec: MULTI_PROVIDER.md).
     # Every agent round gets a full check automatically
     # (Vibe reviews diffs, Actions proves green).
-    branches: [main, ts-migration, byok]
+    branches: [main, ts-migration, byok, polish]
   schedule:
     # Daily 06:30 UTC = 09:30 Minsk (UTC+3). GitHub may delay cron runs a bit
     # during busy periods — fine for a once-a-day health check.
@@ -32,7 +32,7 @@ jobs:
         run: npm run build
       - name: "Unit tests — inflection, prompts, AI answer parsing"
         run: npm test
-      - name: "Live checks — Oxford markup, api.mistral.ai"
+      - name: "Live checks — Oxford markup, provider endpoints"
         run: node scripts/live-check.js
       - name: "Upload build zip"
         uses: actions/upload-artifact@v5

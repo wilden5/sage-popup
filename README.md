@@ -44,7 +44,9 @@ paste your own API key. The settings page has:
 - a per-provider **API key** field (paste, **Test key**, **Save**) and a
   per-provider **model** field. The model field is free text: the
   placeholder shows the built-in suggestion for that provider, which may
-  be stale — type any model your provider offers;
+  be stale — type any model your provider offers. Get a key in your
+  provider's console (e.g.
+  [https://console.mistral.ai/api-keys](https://console.mistral.ai/api-keys)).
 - keys are stored only in `chrome.storage.local` in your browser and are
   sent only to the selected provider's endpoint over HTTPS — no server,
   no analytics.
@@ -207,8 +209,10 @@ Minsk time, and manually (Actions tab → "Run workflow"):
 4. **Live checks** — `scripts/live-check.js` fetches real Oxford pages
    (`cocoa`, `house`, `walk`) and asserts every markup marker the parser
    depends on (headword, def, phons_br, pron-uk, data-src-mp3, senses lists,
-   CEFR symbols), plus that `api.mistral.ai` is alive (200/401). If Oxford
-   changes its markup or the API domain breaks again, the run fails and
+   CEFR symbols), plus that all 8 provider endpoints resolve
+   (network-level reachability — any HTTP answer counts, DNS death fails).
+   If Oxford changes its markup or a provider domain breaks again, the run
+   fails and
    GitHub emails the account owner (default "workflow failure on schedule"
    notifications — see Settings → Notifications → Actions).
 5. **Artifact** — `dist/oxford-popup-ts.zip` is uploaded as a run artifact

@@ -6,16 +6,27 @@
  *  1. Oxford Learner's Dictionaries markup changes (the extension's parser
  *     depends on specific classes: headword, def, phons_br, pron-uk,
  *     data-src-mp3, senses lists, CEFR symbols).
- *  2. api.mistral.ai reachability (the AI fallback endpoint; in 2026 Mistral
- *     silently killed api.mistral.com in DNS — this check exists so that a
- *     repeat costs us an email, not a bug report).
+ *  2. reachability of all 8 AI provider endpoints (any HTTP answer proves
+ *     DNS + reachability; in 2026 Mistral silently killed api.mistral.com
+ *     in DNS — this check exists so that a repeat costs us an email,
+ *     not a bug report).
  *
  * Dependency-free: plain Node.js >= 18 (global fetch). Exit 1 on any failure.
  */
 "use strict";
 
 const OXFORD_URL = "https://www.oxfordlearnersdictionaries.com/definition/english/";
-const MISTRAL_MODELS_URL = "https://api.mistral.ai/v1/models";
+// Keep in sync with src/shared/providers.ts (testKeyEndpoint).
+const PROVIDER_ENDPOINTS = [
+  { id: "mistral", url: "https://api.mistral.ai/v1/models" },
+  { id: "openai", url: "https://api.openai.com/v1/models" },
+  { id: "groq", url: "https://api.groq.com/openai/v1/models" },
+  { id: "openrouter", url: "https://openrouter.ai/api/v1/models" },
+  { id: "deepseek", url: "https://api.deepseek.com/models" },
+  { id: "xai", url: "https://api.x.ai/v1/models" },
+  { id: "anthropic", url: "https://api.anthropic.com/v1/models" },
+  { id: "gemini", url: "https://generativelanguage.googleapis.com/v1beta/models" },
+];
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
@@ -86,25 +97,26 @@ async function checkOxford(entry) {
   }
 }
 
-async function checkMistral() {
-  console.log("Mistral: " + MISTRAL_MODELS_URL);
-  try {
-    const response = await fetchPage(MISTRAL_MODELS_URL);
-    // 401 without a key is the healthy answer; 200 with (impossible here).
-    if (response.status === 200 || response.status === 401) {
+async function checkProviders() {
+  for (const provider of PROVIDER_ENDPOINTS) {
+    console.log("Provider: " + provider.id + " " + provider.url);
+    try {
+      const response = await fetchPage(provider.url);
+      // Any HTTP status (200/401/403/404) proves DNS + reachability.
       pass("endpoint alive (HTTP " + response.status + ")");
-    } else {
-      fail("unexpected HTTP " + response.status + " (expected 200/401)");
+    } catch (err) {
+      fail(
+        provider.id + " endpoint unreachable: " +
+          String(err && err.message ? err.message : err)
+      );
     }
-  } catch (err) {
-    fail("endpoint unreachable: " + String(err && err.message ? err.message : err));
   }
 }
 
 async function main() {
   console.log("Live checks for Oxford Popup");
   for (const entry of WORDS) await checkOxford(entry);
-  await checkMistral();
+  await checkProviders();
   if (failures) {
     console.log(failures + " CHECK(S) FAILED");
     process.exit(1);
