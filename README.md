@@ -24,6 +24,9 @@ Works in both Chrome and Firefox (Manifest V3).
   by an AI provider of your choice, streamed into the same popup and
   marked with the provider badge — the Mistral logo for Mistral,
   the provider's name for the others (uses your own API key — see Settings)
+- phrase explanations can also be read aloud — BrE/NAmE speak buttons in
+  the AI popup use the browser's built-in text-to-speech (word lookups keep
+  the native Oxford audio)
 
 Inflected forms are handled automatically: the original selection is tried
 first (many inflections like *went* or *knives* have their own Oxford
