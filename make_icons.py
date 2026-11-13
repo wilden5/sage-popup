@@ -1,4 +1,4 @@
-"""Generate Oxford Popup icons (rounded blue square with an open book).
+"""Generate Sage Pop-Up icons (rounded blue square with an open book).
 
 Pure stdlib: builds RGBA pixels and writes PNG via zlib/struct.
 """

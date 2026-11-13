@@ -1,12 +1,12 @@
 /**
- * Build script for Oxford Popup (TypeScript migration).
+ * Build script for Sage Pop-Up (TypeScript).
  * Run with: npm run build
  * 
  * Steps:
  *   1. Type-check via tsc --noEmit (fail on errors)
  *   2. Bundle src/background/main.ts, src/content/main.ts, src/options/main.ts with esbuild
  *   3. Copy static assets (manifest.json, content.css, options.html, README.md, icons/) to dist/
- *   4. Zip dist/ contents into dist/oxford-popup-ts.zip
+ *   4. Zip dist/ contents into dist/sage-popup.zip
  */
 
 import { build } from 'esbuild';
@@ -85,7 +85,7 @@ async function main() {
 
   // Step d: zip ONLY the dist contents at zip root
   console.log('Creating zip...');
-  const zipPath = join(dist, 'oxford-popup-ts.zip');
+  const zipPath = join(dist, 'sage-popup.zip');
   
   // cd into dist and zip the contents
   const filesToZip = [

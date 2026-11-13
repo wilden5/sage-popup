@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Oxford Popup",
-  "version": "1.2.0",
+  "name": "Sage Pop-Up",
+  "version": "1.3.0",
   "description": "Select a word, click the floating button, and see its Oxford Learner's Dictionary definition in a minimal popup. Phrases and missing words are explained by the AI provider of your choice (bring your own key).",
   "icons": {
     "16": "icons/icon16.png",
@@ -40,7 +40,7 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "oxford-popup@denis",
+      "id": "sage@wilden5",
       "strict_min_version": "121.0"
     }
   }
