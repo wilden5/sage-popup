@@ -18,6 +18,11 @@ named below.
   Mistral, OpenAI, Groq, OpenRouter, DeepSeek, xAI, Anthropic or Google
   Gemini — using **your own API key**. That request is authenticated with
   your key, and the provider's own privacy policy applies to it.
+- **Phrase read-aloud.** Phrase explanations can be read aloud with the
+  browser's built-in text-to-speech. The extension itself sends nothing:
+  the phrase is passed to the browser, which uses the voices installed on
+  your system (your browser's own privacy policy applies to any voice it
+  provides).
 - **Nothing else.** The extension does not read, store or transmit page
   content beyond the text you explicitly selected.
 
