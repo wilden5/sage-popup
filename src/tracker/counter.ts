@@ -8,14 +8,14 @@
 import { normalize } from "./normalize";
 import { applyMeeting } from "./model";
 import type { WordEntry } from "./model";
-import { readTracker, writeTracker } from "./storage";
+import { readTracker, readTrackerSettings, writeTracker } from "./storage";
 
 export async function recordMeeting(rawWord: string, definition?: string): Promise<WordEntry | null> {
   const lemma = normalize(rawWord);
   if (!lemma || lemma.includes(" ")) return null;
   try {
-    const data = await readTracker();
-    const entry = applyMeeting(data, lemma, rawWord.trim().toLowerCase(), definition);
+    const [data, settings] = await Promise.all([readTracker(), readTrackerSettings()]);
+    const entry = applyMeeting(data, lemma, rawWord.trim().toLowerCase(), definition, settings.threshold);
     await writeTracker(data);
     return entry;
   } catch (err) {

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { recordMeeting } from "../../src/tracker/counter";
 import { makeWordId, WORD_TRACKER_SCHEMA_VERSION } from "../../src/tracker/model";
-import { WORD_TRACKER_KEY } from "../../src/tracker/storage";
+import { WORD_TRACKER_KEY, WORD_TRACKER_SETTINGS_KEY } from "../../src/tracker/storage";
+import { TRACKER_SETTINGS_SCHEMA_VERSION } from "../../src/tracker/settings";
 
 /** Tiny in-memory chrome.storage.local installed on globalThis before each test. */
 function installChromeMock(store: Map<string, unknown>) {
@@ -80,6 +81,25 @@ describe("recordMeeting", () => {
     expect(first!.definition).toBe("to move from place to place");
     const second = await recordMeeting("gone", "a different definition");
     expect(second!.definition).toBe("to move from place to place");
+  });
+
+  it("uses the stored ready threshold from wordTrackerSettings", async () => {
+    store.set(WORD_TRACKER_SETTINGS_KEY, { schemaVersion: TRACKER_SETTINGS_SCHEMA_VERSION, threshold: 2 });
+    const first = await recordMeeting("went");
+    expect(first!.status).toBe("active");
+    const second = await recordMeeting("gone");
+    expect(second!.count).toBe(2);
+    expect(second!.status).toBe("ready");
+  });
+
+  it("falls back to the default threshold when settings are missing or corrupt", async () => {
+    store.set(WORD_TRACKER_SETTINGS_KEY, { schemaVersion: 999, threshold: 1 });
+    await recordMeeting("went");
+    const second = await recordMeeting("gone");
+    expect(second!.count).toBe(2);
+    expect(second!.status).toBe("active"); // default threshold is 3
+    const third = await recordMeeting("go");
+    expect(third!.status).toBe("ready");
   });
 
   it("resolves null instead of throwing when storage rejects", async () => {

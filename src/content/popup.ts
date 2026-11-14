@@ -18,6 +18,7 @@ import type { AiPortMessage, OxfordLookupResponse, StorageSnapshot } from "../sh
 import { providerById, selectedProvider } from "../shared/providers";
 import { recordMeeting } from "../tracker/counter";
 import { meetingIndicator } from "../tracker/indicator";
+import { readTrackerSettings } from "../tracker/storage";
 import type { WordEntry } from "../tracker/model";
 
 /** The open popup element (null while no popup is shown). */
@@ -99,9 +100,15 @@ export function placePopup(x?: number, y?: number): void {
 }
 
 /** Append the meeting indicator to the head row once storage resolves. */
-function showMeetingIndicator(entry: WordEntry | null): void {
+async function showMeetingIndicator(entry: WordEntry | null): Promise<void> {
   if (!entry || !popupState.node) return;
-  const info = meetingIndicator(entry);
+  let threshold: number | undefined;
+  try {
+    threshold = (await readTrackerSettings()).threshold;
+  } catch (err) {
+    // storage unavailable — fall back to the default threshold
+  }
+  const info = meetingIndicator(entry, threshold);
   if (info.kind === "hidden") return;
   const head = popupState.node.querySelector(".oxp-head");
   if (!head) return; // popup re-rendered or closed while storage resolved
