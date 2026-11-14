@@ -3,10 +3,12 @@ name: tests
 # Free plan: private repos get 2000 Actions minutes/month, this job uses ~2.
 on:
   push:
-    # main = merged milestones; "listing" = the active R3 round branch
-    # (spec: R3_LISTING.md). Every agent round gets a full check
-    # automatically (Vibe reviews diffs, Actions proves green).
-    branches: [main, listing]
+    # main = merged milestones (frozen at v1.3.0 during tracker work);
+    # "tracker" = the umbrella feature branch for the tracker/collection/SRS
+    # work; "tracker-t" = the active phase-T round branch. Every agent
+    # round gets a full check automatically (Vibe reviews diffs,
+    # Actions proves green).
+    branches: [main, tracker, tracker-t]
   schedule:
     # Daily 06:30 UTC = 09:30 Minsk (UTC+3). GitHub may delay cron runs a bit
     # during busy periods — fine for a once-a-day health check.
