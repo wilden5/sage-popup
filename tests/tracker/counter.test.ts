@@ -70,7 +70,9 @@ describe("recordMeeting", () => {
     const entry = await recordMeeting("  Hello!  ");
     expect(entry).not.toBeNull();
     expect(entry!.lemma).toBe("hello");
-    expect(entry!.forms).toEqual(["hello"]);
+    // The stored form is the trimmed, lowercased raw selection — punctuation
+    // stays; only the lemma is fully normalized.
+    expect(entry!.forms).toEqual(["hello!"]);
   });
 
   it("stores the definition argument and preserves an existing definition", async () => {
