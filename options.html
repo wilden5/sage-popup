@@ -81,10 +81,198 @@
         margin: 6px 0 0;
         min-height: 0;
       }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid #d0d4d9;
+        margin-bottom: 14px;
+      }
+      .tab {
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: none;
+        color: #57606a;
+        padding: 6px 12px;
+        margin-right: 0;
+      }
+      .tab:hover {
+        background: #f0f2f5;
+      }
+      .tab.active {
+        background: none;
+        color: #1a56a0;
+        font-weight: 600;
+        border-bottom-color: #1a56a0;
+      }
+      .panel[hidden] {
+        display: none;
+      }
+      #threshold {
+        font: inherit;
+        width: 64px;
+        padding: 6px 8px;
+        border: 1px solid #d0d4d9;
+        border-radius: 6px;
+        margin-bottom: 4px;
+      }
+      #threshold:focus {
+        outline: none;
+        border-color: #1a56a0;
+      }
+      .tracker-summary {
+        font-size: 13px;
+        color: #57606a;
+        margin: 10px 0 8px;
+      }
+      #word-search {
+        font: inherit;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        border: 1px solid #d0d4d9;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        background: #fff;
+      }
+      #word-search:focus {
+        outline: none;
+        border-color: #1a56a0;
+      }
+      .chips {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+      }
+      .chip {
+        font-size: 12px;
+        padding: 3px 10px;
+        margin-right: 0;
+      }
+      .chip.active {
+        background: #1a56a0;
+        border-color: #1a56a0;
+        color: #fff;
+      }
+      .hairline {
+        border: none;
+        border-top: 1px solid #f0f2f5;
+        margin: 8px 0;
+      }
+      .sort-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+      }
+      .sort-btn {
+        font-size: 12px;
+        padding: 3px 10px;
+        margin-right: 0;
+      }
+      .sort-btn.active {
+        background: #1a56a0;
+        border-color: #1a56a0;
+        color: #fff;
+      }
+      .word-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f2f5;
+      }
+      .word-main {
+        flex: 1;
+        min-width: 0;
+      }
+      .word-line1 {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .word-lemma {
+        font-weight: 600;
+      }
+      .word-count {
+        font-size: 12px;
+        color: #8a929b;
+      }
+      .word-badge {
+        font-size: 11px;
+        padding: 1px 8px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+      }
+      .word-badge.ready {
+        color: #1e7b34;
+        background: #e6f4ea;
+        border-color: #bfe3c9;
+      }
+      .word-badge.archived {
+        color: #57606a;
+        background: #f0f2f5;
+        border-color: #d0d4d9;
+      }
+      .word-def {
+        font-size: 12px;
+        color: #8a929b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .word-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .word-action {
+        font-size: 12px;
+        padding: 2px 10px;
+        margin-right: 0;
+      }
+      .word-action.delete {
+        color: #c72c1e;
+        background: #fdecea;
+        border-color: #f5c6c0;
+      }
+      .word-action.delete:hover {
+        background: #fbd9d3;
+      }
+      .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #57606a;
+      }
+      .pagination button {
+        margin-right: 0;
+      }
+      .pagination button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .empty {
+        color: #57606a;
+        font-size: 13px;
+        text-align: center;
+        padding: 16px 0;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
     <h1>Sage Pop-Up</h1>
+    <div class="tabs" role="tablist">
+      <button id="tab-ai" class="tab active" type="button" role="tab">AI settings</button>
+      <button id="tab-tracker" class="tab" type="button" role="tab">Word tracker</button>
+    </div>
+    <div id="panel-ai" class="panel" role="tabpanel">
     <label for="provider">Provider</label>
     <select id="provider"></select>
     <label for="key">API key</label>
@@ -104,6 +292,22 @@
     <button id="grant">Grant access</button>
     <p id="perm"></p>
     <p id="status"></p>
+    </div>
+    <div id="panel-tracker" class="panel" role="tabpanel" hidden>
+      <label for="threshold">Ready threshold</label>
+      <input id="threshold" type="number" min="1" max="10" />
+      <p class="hint">A word is marked ready to learn after this many meetings. Applies immediately.</p>
+      <p id="tracker-summary" class="tracker-summary"></p>
+      <input id="word-search" type="search" autocomplete="off" placeholder="Search words…" />
+      <div id="status-chips" class="chips"></div>
+      <hr class="hairline" />
+      <div class="sort-row">
+        <button id="sort-count" class="sort-btn active" type="button">Most met</button>
+        <button id="sort-recent" class="sort-btn" type="button">Recently seen</button>
+      </div>
+      <div id="word-list"></div>
+      <div id="word-pagination" class="pagination"></div>
+    </div>
     <script src="options.js"></script>
   </body>
 </html>
