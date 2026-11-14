@@ -329,7 +329,7 @@ import type { SortKey, StatusFilter, WordListResult } from "./words";
 
   function buildWordRow(entry: WordEntry): HTMLElement {
     const row = document.createElement("div");
-    row.className = "word-row";
+    row.className = "word-row" + (entry.status === "archived" ? " archived" : "");
 
     const main = document.createElement("div");
     main.className = "word-main";

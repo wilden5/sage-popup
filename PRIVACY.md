@@ -32,7 +32,12 @@ named below.
   the browser's local extension storage (`chrome.storage.local`).
 - Keys are sent only to the provider whose key they are, over HTTPS, only
   when that provider is used. They are never included in any other request.
-- The extension keeps no history of your lookups.
+- **Word tracker.** Meeting counters for the words you look up (with the
+  first definition found) and your ready threshold are stored only in
+  `chrome.storage.local`; they never leave your browser and can be removed
+  on the settings page.
+- The extension keeps no history of your lookups beyond these word tracker
+  counters.
 
 ## Permissions
 
