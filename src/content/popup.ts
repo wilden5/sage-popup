@@ -16,6 +16,7 @@ import { speakText } from "./tts";
 import { hidePopup, SPEAKER_SVG, MISTRAL_SVG, SEARCH_URL } from "./main";
 import type { AiPortMessage, OxfordLookupResponse, StorageSnapshot } from "../shared/types";
 import { providerById, selectedProvider } from "../shared/providers";
+import { recordMeeting } from "../tracker/counter";
 
 /** The open popup element (null while no popup is shown). */
 export const popupState: { node: HTMLDivElement | null } = { node: null };
@@ -129,6 +130,7 @@ export async function lookupAndRender(word: string, sentence: string): Promise<v
     const entry = parseEntry(response.html);
     if (entry) {
       popupState.node.append(buildEntry(entry, response.url));
+      void recordMeeting(word, entry.senses.length > 0 ? entry.senses[0]!.def : undefined);
       placePopup(); // content height changed — re-fit into the viewport
       return;
     }
@@ -288,6 +290,7 @@ export function tryAi(
         return;
       }
       renderAiAnswer(buffer, true);
+      if (!isPhrase) void recordMeeting(word);
     } else if (msg.type === "no-key") {
       closeAiPort();
       restore();
