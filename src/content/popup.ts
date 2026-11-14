@@ -17,6 +17,8 @@ import { hidePopup, SPEAKER_SVG, MISTRAL_SVG, SEARCH_URL } from "./main";
 import type { AiPortMessage, OxfordLookupResponse, StorageSnapshot } from "../shared/types";
 import { providerById, selectedProvider } from "../shared/providers";
 import { recordMeeting } from "../tracker/counter";
+import { meetingIndicator } from "../tracker/indicator";
+import type { WordEntry } from "../tracker/model";
 
 /** The open popup element (null while no popup is shown). */
 export const popupState: { node: HTMLDivElement | null } = { node: null };
@@ -96,6 +98,18 @@ export function placePopup(x?: number, y?: number): void {
   popup.style.top = top + "px";
 }
 
+/** Append the meeting indicator to the head row once storage resolves. */
+function showMeetingIndicator(entry: WordEntry | null): void {
+  if (!entry || !popupState.node) return;
+  const info = meetingIndicator(entry);
+  if (info.kind === "hidden") return;
+  const head = popupState.node.querySelector(".oxp-head");
+  if (!head) return; // popup re-rendered or closed while storage resolved
+  const span = el("span", "oxp-meeting" + (info.kind === "ready" ? " oxp-ready" : ""), info.text);
+  span.title = info.title;
+  head.append(span);
+}
+
 export async function lookupAndRender(word: string, sentence: string): Promise<void> {
   let response: OxfordLookupResponse | null = null;
   try {
@@ -130,7 +144,7 @@ export async function lookupAndRender(word: string, sentence: string): Promise<v
     const entry = parseEntry(response.html);
     if (entry) {
       popupState.node.append(buildEntry(entry, response.url));
-      void recordMeeting(word, entry.senses.length > 0 ? entry.senses[0]!.def : undefined);
+      void recordMeeting(word, entry.senses.length > 0 ? entry.senses[0]!.def : undefined).then(showMeetingIndicator);
       placePopup(); // content height changed — re-fit into the viewport
       return;
     }
@@ -290,7 +304,7 @@ export function tryAi(
         return;
       }
       renderAiAnswer(buffer, true);
-      if (!isPhrase) void recordMeeting(word);
+      if (!isPhrase) void recordMeeting(word).then(showMeetingIndicator);
     } else if (msg.type === "no-key") {
       closeAiPort();
       restore();
