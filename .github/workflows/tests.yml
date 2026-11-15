@@ -8,7 +8,7 @@ on:
     # work; "tracker-t" = the active phase-T round branch. Every agent
     # round gets a full check automatically (Vibe reviews diffs,
     # Actions proves green).
-    branches: [main, tracker, tracker-t]
+    branches: [main, tracker, tracker-t, tracker-c]
   schedule:
     # Daily 06:30 UTC = 09:30 Minsk (UTC+3). GitHub may delay cron runs a bit
     # during busy periods — fine for a once-a-day health check.
