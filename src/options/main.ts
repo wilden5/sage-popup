@@ -584,7 +584,8 @@ import type { SortKey, StatusCounts, StatusFilter, WordListResult } from "./word
       } catch (err) {
         // storage unavailable — drop archived entries from the in-memory view
         for (const lemma of Object.keys(trackerState.data.words)) {
-          if (trackerState.data.words[lemma].status === "archived") delete trackerState.data.words[lemma];
+          const entry = trackerState.data.words[lemma];
+          if (entry && entry.status === "archived") delete trackerState.data.words[lemma];
         }
       }
       confirmPanel = null;

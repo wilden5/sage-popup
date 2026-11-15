@@ -54,7 +54,8 @@ export async function clearTracker(): Promise<void> {
 export async function clearArchived(): Promise<void> {
   const data = await readTracker();
   for (const lemma of Object.keys(data.words)) {
-    if (data.words[lemma].status === "archived") delete data.words[lemma];
+    const entry = data.words[lemma];
+    if (entry && entry.status === "archived") delete data.words[lemma];
   }
   await writeTracker(data);
 }
