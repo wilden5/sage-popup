@@ -57,6 +57,9 @@
 }
 
 #oxp-popup .oxp-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   margin: 0 0 2px;
 }
 
@@ -130,6 +133,32 @@
 #oxp-popup button.oxp-audio svg {
   width: 13px;
   height: 13px;
+  display: block;
+}
+
+#oxp-popup button.oxp-save {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 3px;
+  margin: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+#oxp-popup button.oxp-save:hover {
+  background: #eef3f9;
+}
+
+#oxp-popup button.oxp-save svg {
+  width: 17px;
+  height: 17px;
   display: block;
 }
 

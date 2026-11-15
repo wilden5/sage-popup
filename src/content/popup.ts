@@ -18,16 +18,27 @@ import type { AiPortMessage, OxfordLookupResponse, StorageSnapshot } from "../sh
 import { providerById, selectedProvider } from "../shared/providers";
 import { recordMeeting } from "../tracker/counter";
 import { meetingIndicator } from "../tracker/indicator";
-import { readTrackerSettings } from "../tracker/storage";
+import { readTracker, readTrackerSettings, saveWord, unsaveWord } from "../tracker/storage";
 import type { WordEntry } from "../tracker/model";
+import { deletePhrase, readPhraseCollection, savePhrase } from "../collection/storage";
+import { normalizePhrase } from "../collection/model";
 
-/** The open popup element (null while no popup is shown). */
-export const popupState: { node: HTMLDivElement | null } = { node: null };
+/** The open popup element (null while no popup is shown) plus the sentence
+ *  context captured for the current lookup (stored when the popup opens). */
+export const popupState: { node: HTMLDivElement | null; sentence: string } = { node: null, sentence: "" };
 
 let anchorX = 40;
 let anchorY = 40; // viewport point below the word the popup is anchored to
 let aiPort: chrome.runtime.Port | null = null; // runtime port streaming the AI answer
 let aiWord = ""; // word/phrase of the current AI answer
+
+// Save bookmark state for the current popup: the normalized word/phrase,
+// whether it is a phrase (phrase collection) or a single word (tracker
+// entry), the saved flag read from storage, and the rendered button (if any).
+let bookmark: { text: string; isPhrase: boolean; saved: boolean; button: HTMLButtonElement | null } | null = null;
+// The currently rendered first definition (Oxford sense, or the first AI
+// item when the lookup fell back to AI) — saved when the bookmark is toggled on.
+let currentDefinition: string | undefined;
 
 // Selected BYOK provider for the badge/texts. Defaults to Mistral so the
 // very first render (before the async read resolves) is byte-identical
@@ -56,8 +67,12 @@ export function closeAiPort(): void {
   }
 }
 
-export function renderPopup(word: string, x: number, y: number, aiMode: boolean): void {
+export function renderPopup(word: string, x: number, y: number, aiMode: boolean, sentence = ""): void {
   hidePopup();
+  popupState.sentence = sentence;
+  bookmark = { text: word, isPhrase: aiMode, saved: false, button: null };
+  currentDefinition = undefined;
+  void loadBookmarkSaved(word, aiMode); // read the store in parallel with the lookup
   const popup = el("div");
   popupState.node = popup;
   popup.id = "oxp-popup";
@@ -99,6 +114,109 @@ export function placePopup(x?: number, y?: number): void {
   popup.style.top = top + "px";
 }
 
+// ------------------------------------------------------------ save bookmark
+
+const BOOKMARK_PATH = "M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z";
+
+function bookmarkSvg(saved: boolean): string {
+  const color = saved ? "#176d3a" : "#57606a";
+  return (
+    '<svg viewBox="0 0 24 24" fill="' +
+    (saved ? "#176d3a" : "none") +
+    '" stroke="' +
+    color +
+    '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="' +
+    BOOKMARK_PATH +
+    '"/></svg>'
+  );
+}
+
+function headRow(): Element | null {
+  return popupState.node ? popupState.node.querySelector(".oxp-head") : null;
+}
+
+function buildBookmarkButton(): HTMLButtonElement {
+  const btn = el("button", "oxp-save");
+  btn.type = "button";
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void toggleBookmark();
+  });
+  return btn;
+}
+
+function updateBookmarkButton(): void {
+  if (!bookmark || !bookmark.button) return;
+  bookmark.button.innerHTML = bookmarkSvg(bookmark.saved);
+  bookmark.button.title = bookmark.saved ? "Saved to your cards" : "Save to your cards";
+}
+
+/**
+ * Attach the bookmark button to the head row when it should be visible: an
+ * already-saved item shows the filled bookmark from the first frame; an
+ * unsaved item's bookmark appears only once a definition has rendered.
+ */
+function attachBookmark(definitionReady: boolean): void {
+  if (!bookmark || bookmark.button) return;
+  if (!bookmark.saved && !definitionReady) return;
+  const head = headRow();
+  if (!head) return;
+  bookmark.button = buildBookmarkButton();
+  head.append(bookmark.button);
+  updateBookmarkButton();
+}
+
+/** Read the saved state in parallel with the lookup; refresh the button. */
+async function loadBookmarkSaved(text: string, isPhrase: boolean): Promise<void> {
+  let saved = false;
+  try {
+    if (isPhrase) {
+      const data = await readPhraseCollection();
+      saved = Boolean(data.phrases[normalizePhrase(text)]);
+    } else {
+      const data = await readTracker();
+      const entry = data.words[text];
+      saved = Boolean(entry && entry.saved);
+    }
+  } catch (err) {
+    // storage unavailable — keep the unsaved outline
+  }
+  if (!bookmark || bookmark.text !== text || bookmark.isPhrase !== isPhrase) return; // re-rendered or closed
+  bookmark.saved = saved;
+  attachBookmark(false);
+}
+
+/** Click = toggle, instant: save or unsave, then flip the icon. */
+async function toggleBookmark(): Promise<void> {
+  if (!bookmark) return;
+  const { text, isPhrase, saved } = bookmark;
+  const context = popupState.sentence;
+  try {
+    if (isPhrase) {
+      if (saved) {
+        await deletePhrase(normalizePhrase(text));
+        bookmark.saved = false;
+      } else {
+        await savePhrase(text, context, currentDefinition ?? "");
+        bookmark.saved = true;
+      }
+    } else {
+      if (saved) {
+        await unsaveWord(text);
+        bookmark.saved = false;
+      } else {
+        await saveWord(text, context, currentDefinition);
+        bookmark.saved = true;
+      }
+    }
+  } catch (err) {
+    return; // storage failed — keep the icon as it was
+  }
+  updateBookmarkButton();
+}
+
 /** Append the meeting indicator to the head row once storage resolves. */
 async function showMeetingIndicator(entry: WordEntry | null): Promise<void> {
   if (!entry || !popupState.node) return;
@@ -114,7 +232,9 @@ async function showMeetingIndicator(entry: WordEntry | null): Promise<void> {
   if (!head) return; // popup re-rendered or closed while storage resolved
   const span = el("span", "oxp-meeting" + (info.kind === "ready" ? " oxp-ready" : ""), info.text);
   span.title = info.title;
-  head.append(span);
+  const saveBtn = head.querySelector(".oxp-save");
+  if (saveBtn) head.insertBefore(span, saveBtn); // keep the bookmark on the far right
+  else head.append(span);
 }
 
 export async function lookupAndRender(word: string, sentence: string): Promise<void> {
@@ -151,7 +271,9 @@ export async function lookupAndRender(word: string, sentence: string): Promise<v
     const entry = parseEntry(response.html);
     if (entry) {
       popupState.node.append(buildEntry(entry, response.url));
-      void recordMeeting(word, entry.senses.length > 0 ? entry.senses[0]!.def : undefined).then(showMeetingIndicator);
+      currentDefinition = entry.senses.length > 0 ? entry.senses[0]!.def : undefined;
+      void recordMeeting(word, currentDefinition).then(showMeetingIndicator);
+      attachBookmark(true); // the senses list rendered — the bookmark may appear now
       placePopup(); // content height changed — re-fit into the viewport
       return;
     }
@@ -345,6 +467,8 @@ export function renderAiAnswer(buffer: string, done: boolean): void {
   head.append(el("span", "oxp-word", aiWord));
   head.append(buildAiBadge());
   popupState.node.append(head);
+  // The head is rebuilt on every chunk — the old bookmark button is gone.
+  if (bookmark && bookmark.text === aiWord) bookmark.button = null;
 
   // Pronunciation row: browser TTS buttons (phrases have no Oxford MP3s).
   const phon = el("div", "oxp-phon");
@@ -368,8 +492,9 @@ export function renderAiAnswer(buffer: string, done: boolean): void {
   addSpeakPart("NAmE", "en-US");
   popupState.node.append(phon);
 
+  const items = parseAiItems(buffer);
   const ol = el("ol", "oxp-senses");
-  for (const item of parseAiItems(buffer)) {
+  for (const item of items) {
     const li = el("li");
     li.append(el("span", "oxp-def", item.meaning));
     if (item.example) {
@@ -378,6 +503,8 @@ export function renderAiAnswer(buffer: string, done: boolean): void {
     ol.append(li);
   }
   popupState.node.append(ol);
+  if (items.length > 0) currentDefinition = items[0]!.meaning;
+  attachBookmark(items.length > 0); // first AI item rendered (or already saved)
 
   if (done) {
     const footer = el("div", "oxp-footer");

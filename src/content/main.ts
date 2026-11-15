@@ -194,7 +194,7 @@ function openPopup(): void {
   const x = rect ? rect.left : 40;
   const y = rect ? rect.bottom : 40;
   hideIcon();
-  renderPopup(word, x, y, isPhrase);
+  renderPopup(word, x, y, isPhrase, sentence);
   if (isPhrase) {
     // Phrases go straight to the selected provider (per design: context explanation).
     tryAi(word, sentence, true, () => buildNoKey(word), false);
