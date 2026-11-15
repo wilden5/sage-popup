@@ -6,7 +6,7 @@
  */
 
 import { WORD_TRACKER_SCHEMA_VERSION, emptyTracker } from "./model";
-import type { WordTrackerData } from "./model";
+import type { WordEntry, WordTrackerData } from "./model";
 import { TRACKER_SETTINGS_SCHEMA_VERSION, clampThreshold, defaultTrackerSettings } from "./settings";
 import type { WordTrackerSettings } from "./settings";
 
@@ -57,6 +57,40 @@ export async function clearArchived(): Promise<void> {
     const entry = data.words[lemma];
     if (entry && entry.status === "archived") delete data.words[lemma];
   }
+  await writeTracker(data);
+}
+
+/**
+ * Mark a tracked word as saved (kept in the Cards to learn collection)
+ * together with the sentence context of the save. A non-empty definition is
+ * stored only when the entry has none yet — never overwritten. An unknown
+ * lemma is a null no-op (a meeting is always recorded on popup open, so
+ * this is an edge case).
+ */
+export async function saveWord(lemma: string, context: string, definition?: string): Promise<WordEntry | null> {
+  const data = await readTracker();
+  const entry = data.words[lemma];
+  if (!entry) return null;
+  entry.saved = true;
+  entry.context = context;
+  entry.updatedAt = Date.now();
+  if (typeof definition === "string" && definition !== "" && entry.definition === undefined) {
+    entry.definition = definition;
+  }
+  await writeTracker(data);
+  return entry;
+}
+
+/**
+ * Unsave a word: the saved flag flips off, but the tracker entry itself
+ * (meetings, definition, status) is kept.
+ */
+export async function unsaveWord(lemma: string): Promise<void> {
+  const data = await readTracker();
+  const entry = data.words[lemma];
+  if (!entry) return;
+  entry.saved = false;
+  entry.updatedAt = Date.now();
   await writeTracker(data);
 }
 

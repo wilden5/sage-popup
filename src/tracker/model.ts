@@ -20,6 +20,8 @@ export interface WordEntry {
   updatedAt: number; // epoch ms
   status: WordStatus;
   definition?: string; // first Oxford sense definition, if known
+  saved?: boolean; // kept in the Cards to learn collection (phase C)
+  context?: string; // sentence context around the save (phase C)
 }
 
 export interface WordTrackerData {

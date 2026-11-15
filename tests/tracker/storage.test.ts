@@ -8,6 +8,8 @@ import {
   writeTracker,
   readTrackerSettings,
   writeTrackerSettings,
+  saveWord,
+  unsaveWord,
 } from "../../src/tracker/storage";
 import { TRACKER_SETTINGS_SCHEMA_VERSION, defaultTrackerSettings } from "../../src/tracker/settings";
 import { DEFAULT_THRESHOLD, WORD_TRACKER_SCHEMA_VERSION, emptyTracker } from "../../src/tracker/model";
@@ -160,5 +162,92 @@ describe("tracker collection cleanup", () => {
     await writeTracker({ schemaVersion: WORD_TRACKER_SCHEMA_VERSION, words: { think: ready } });
     await clearArchived();
     expect((await readTracker()).words["think"]).toEqual(ready);
+  });
+});
+
+describe("saveWord / unsaveWord", () => {
+  let store: Map<string, unknown>;
+
+  beforeEach(() => {
+    store = new Map();
+    installChromeMock(store);
+  });
+
+  function makeEntry(lemma: string): WordEntry {
+    return {
+      id: lemma + "-id",
+      lemma,
+      forms: [lemma],
+      count: 2,
+      firstSeen: 1000,
+      lastSeen: 2000,
+      updatedAt: 2000,
+      status: "active",
+    };
+  }
+
+  async function seed(entries: Record<string, WordEntry>): Promise<void> {
+    await writeTracker({ schemaVersion: WORD_TRACKER_SCHEMA_VERSION, words: entries });
+  }
+
+  it("saveWord sets the saved flag + context, bumps updatedAt, and fills a missing definition", async () => {
+    await seed({ run: makeEntry("run") });
+    const entry = await saveWord("run", "He likes to run in the morning.", "to move fast on foot");
+    expect(entry).not.toBeNull();
+    expect(entry!.saved).toBe(true);
+    expect(entry!.context).toBe("He likes to run in the morning.");
+    expect(entry!.definition).toBe("to move fast on foot");
+    expect(entry!.updatedAt).toBeGreaterThan(2000);
+    const stored = (await readTracker()).words["run"];
+    expect(stored).toEqual(entry);
+    // the rest of the entry is untouched
+    expect(stored!.count).toBe(2);
+    expect(stored!.firstSeen).toBe(1000);
+    expect(stored!.status).toBe("active");
+  });
+
+  it("saveWord never overwrites an existing definition", async () => {
+    const withDef = makeEntry("run");
+    withDef.definition = "existing definition";
+    await seed({ run: withDef });
+    const entry = await saveWord("run", "ctx", "a different definition");
+    expect(entry!.definition).toBe("existing definition");
+    expect((await readTracker()).words["run"]!.definition).toBe("existing definition");
+  });
+
+  it("saveWord ignores an empty-string definition", async () => {
+    await seed({ run: makeEntry("run") });
+    const entry = await saveWord("run", "ctx", "");
+    expect(entry!.definition).toBeUndefined();
+  });
+
+  it("saveWord is a null no-op for an unknown lemma and writes nothing", async () => {
+    await seed({ run: makeEntry("run") });
+    const entry = await saveWord("unknown", "ctx", "def");
+    expect(entry).toBeNull();
+    expect(Object.keys((await readTracker()).words)).toEqual(["run"]);
+  });
+
+  it("unsaveWord flips the flag off and keeps the whole entry", async () => {
+    const savedEntry = makeEntry("run");
+    savedEntry.saved = true;
+    savedEntry.context = "ctx";
+    savedEntry.definition = "to move fast on foot";
+    await seed({ run: savedEntry });
+    await unsaveWord("run");
+    const stored = (await readTracker()).words["run"];
+    expect(stored).not.toBeUndefined();
+    expect(stored!.saved).toBe(false);
+    expect(stored!.context).toBe("ctx"); // context is kept, only the flag flips
+    expect(stored!.definition).toBe("to move fast on foot");
+    expect(stored!.count).toBe(2);
+    expect(stored!.status).toBe("active");
+    expect(stored!.updatedAt).toBeGreaterThan(2000);
+  });
+
+  it("unsaveWord is a no-op for an unknown lemma", async () => {
+    await seed({ run: makeEntry("run") });
+    await unsaveWord("unknown");
+    expect(Object.keys((await readTracker()).words)).toEqual(["run"]);
   });
 });
