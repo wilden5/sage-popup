@@ -261,6 +261,91 @@
         color: #8a929b;
         margin: 10px 0;
       }
+      .cleanup {
+        border-top: 1px solid #f0f2f5;
+        margin: 0 0 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .cleanup[hidden] {
+        display: none;
+      }
+      .cleanup-buttons {
+        display: flex;
+        gap: 8px;
+      }
+      .cleanup-btn {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        color: #c72c1e;
+        background: #fdf1f0;
+        border: 1px solid #f5d9d6;
+        cursor: pointer;
+        margin-right: 0;
+      }
+      .cleanup-btn:hover {
+        background: #fbd9d3;
+      }
+      .confirm-panel {
+        background: #fdf1f0;
+        border: 1px solid #f5d9d6;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        text-align: left;
+      }
+      .confirm-panel[hidden] {
+        display: none;
+      }
+      .confirm-text {
+        flex: 1;
+        font-size: 12px;
+        color: #c72c1e;
+        font-weight: 600;
+      }
+      .confirm-yes {
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 6px;
+        color: #fff;
+        background: #c72c1e;
+        border: 1px solid #c72c1e;
+        font-weight: 600;
+        cursor: pointer;
+        margin-right: 0;
+      }
+      .confirm-yes:hover {
+        background: #c72c1e;
+      }
+      .confirm-cancel {
+        background: none;
+        border: none;
+        font-size: 12px;
+        color: #1a56a0;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        margin-right: 0;
+      }
+      .confirm-cancel:hover {
+        background: none;
+      }
+      .footnote {
+        border-top: 1px solid #f0f2f5;
+        padding-top: 10px;
+        margin-top: 14px;
+        font-size: 11px;
+        font-style: italic;
+        font-weight: 300;
+        color: #8a929b;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -304,6 +389,23 @@
       </div>
       <div id="word-list"></div>
       <div id="word-pagination" class="pagination"></div>
+      <div id="word-cleanup" class="cleanup" hidden>
+        <div class="cleanup-buttons">
+          <button id="delete-archived" class="cleanup-btn" type="button">Delete archived</button>
+          <button id="delete-all" class="cleanup-btn" type="button">Delete all</button>
+        </div>
+        <div id="confirm-archived" class="confirm-panel" hidden>
+          <span id="confirm-archived-text" class="confirm-text"></span>
+          <button id="confirm-archived-yes" class="confirm-yes" type="button">Delete archived words</button>
+          <button id="confirm-archived-cancel" class="confirm-cancel" type="button">Cancel</button>
+        </div>
+        <div id="confirm-all" class="confirm-panel" hidden>
+          <span id="confirm-all-text" class="confirm-text"></span>
+          <button id="confirm-all-yes" class="confirm-yes" type="button">Delete all words</button>
+          <button id="confirm-all-cancel" class="confirm-cancel" type="button">Cancel</button>
+        </div>
+      </div>
+      <p id="word-footnote" class="footnote" hidden>* You can delete archived or all words on the Archived page.</p>
     </div>
     <script src="options.js"></script>
   </body>

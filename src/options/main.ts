@@ -25,9 +25,16 @@ import {
   defaultTrackerSettings
 } from "../tracker/settings";
 import type { WordTrackerSettings } from "../tracker/settings";
-import { readTracker, readTrackerSettings, writeTracker, writeTrackerSettings } from "../tracker/storage";
+import {
+  clearArchived,
+  clearTracker,
+  readTracker,
+  readTrackerSettings,
+  writeTracker,
+  writeTrackerSettings
+} from "../tracker/storage";
 import { countByStatus, filterByQuery, listWords } from "./words";
-import type { SortKey, StatusFilter, WordListResult } from "./words";
+import type { SortKey, StatusCounts, StatusFilter, WordListResult } from "./words";
 
 (() => {
   "use strict";
@@ -239,6 +246,9 @@ import type { SortKey, StatusFilter, WordListResult } from "./words";
     tabTracker.classList.toggle("active", which === "tracker");
     panelAi.hidden = which !== "ai";
     panelTracker.hidden = which !== "tracker";
+    // The cleanup confirm panel is transient view state — switching tabs
+    // always collapses it.
+    confirmPanel = null;
   }
 
   tabAi.addEventListener("click", () => activateTab("ai"));
@@ -264,6 +274,22 @@ import type { SortKey, StatusFilter, WordListResult } from "./words";
   const paginationEl = document.getElementById("word-pagination") as HTMLElement;
   const sortCountBtn = document.getElementById("sort-count") as HTMLButtonElement;
   const sortRecentBtn = document.getElementById("sort-recent") as HTMLButtonElement;
+  const cleanupEl = document.getElementById("word-cleanup") as HTMLElement;
+  const deleteArchivedBtn = document.getElementById("delete-archived") as HTMLButtonElement;
+  const deleteAllBtn = document.getElementById("delete-all") as HTMLButtonElement;
+  const confirmArchivedPanel = document.getElementById("confirm-archived") as HTMLElement;
+  const confirmArchivedText = document.getElementById("confirm-archived-text") as HTMLElement;
+  const confirmArchivedYes = document.getElementById("confirm-archived-yes") as HTMLButtonElement;
+  const confirmArchivedCancel = document.getElementById("confirm-archived-cancel") as HTMLButtonElement;
+  const confirmAllPanel = document.getElementById("confirm-all") as HTMLElement;
+  const confirmAllText = document.getElementById("confirm-all-text") as HTMLElement;
+  const confirmAllYes = document.getElementById("confirm-all-yes") as HTMLButtonElement;
+  const confirmAllCancel = document.getElementById("confirm-all-cancel") as HTMLButtonElement;
+  const footnoteEl = document.getElementById("word-footnote") as HTMLElement;
+
+  // Which inline confirmation panel is open ("archived" | "all" | null).
+  // Transient view state only — never persisted.
+  let confirmPanel: "archived" | "all" | null = null;
 
   const CHIPS: { filter: StatusFilter; label: string }[] = [
     { filter: "all", label: "All" },
@@ -446,6 +472,7 @@ import type { SortKey, StatusFilter, WordListResult } from "./words";
       btn.addEventListener("click", () => {
         trackerState.filter = chip.filter;
         trackerState.page = 1;
+        confirmPanel = null; // switching the status chip collapses any open panel
         renderTracker();
       });
       chipsEl.appendChild(btn);
@@ -464,6 +491,43 @@ import type { SortKey, StatusFilter, WordListResult } from "./words";
 
     renderRows(result.rows, entries.length === 0);
     renderPagination(result);
+    renderFooter(allCounts, entries.length);
+  }
+
+  /**
+   * View-aware footer under the list/pagination: the two-button cleanup
+   * block only on the "Archived" chip (when the collection is non-empty),
+   * the discoverability footnote on every other non-empty view, and nothing
+   * at all when the collection is empty.
+   */
+  function renderFooter(allCounts: StatusCounts, total: number): void {
+    if (total === 0) {
+      cleanupEl.hidden = true;
+      footnoteEl.hidden = true;
+      confirmPanel = null;
+      return;
+    }
+    if (trackerState.filter !== "archived") {
+      cleanupEl.hidden = true;
+      footnoteEl.hidden = false;
+      confirmPanel = null;
+      return;
+    }
+    cleanupEl.hidden = false;
+    footnoteEl.hidden = true;
+    deleteArchivedBtn.hidden = allCounts.archived === 0;
+    confirmArchivedPanel.hidden = confirmPanel !== "archived";
+    confirmAllPanel.hidden = confirmPanel !== "all";
+    if (confirmPanel === "archived") {
+      confirmArchivedText.textContent =
+        "This will permanently delete all " + allCounts.archived + " archived word" +
+        (allCounts.archived === 1 ? "" : "s") + ". This cannot be undone.";
+    }
+    if (confirmPanel === "all") {
+      confirmAllText.textContent =
+        "This will permanently delete all " + total + " word" + (total === 1 ? "" : "s") +
+        ", including words you are still learning. This cannot be undone.";
+    }
   }
 
   thresholdInput.addEventListener("change", () => {
@@ -497,6 +561,60 @@ import type { SortKey, StatusFilter, WordListResult } from "./words";
   sortRecentBtn.addEventListener("click", () => {
     trackerState.sort = "lastSeen";
     trackerState.page = 1;
+    renderTracker();
+  });
+
+  // Cleanup triggers: toggle their own panel, mutually exclusive with the
+  // other one; clicking the open trigger again closes it.
+  deleteArchivedBtn.addEventListener("click", () => {
+    confirmPanel = confirmPanel === "archived" ? null : "archived";
+    renderTracker();
+  });
+
+  deleteAllBtn.addEventListener("click", () => {
+    confirmPanel = confirmPanel === "all" ? null : "all";
+    renderTracker();
+  });
+
+  confirmArchivedYes.addEventListener("click", () => {
+    (async () => {
+      try {
+        await clearArchived();
+        trackerState.data = await readTracker();
+      } catch (err) {
+        // storage unavailable — drop archived entries from the in-memory view
+        for (const lemma of Object.keys(trackerState.data.words)) {
+          if (trackerState.data.words[lemma].status === "archived") delete trackerState.data.words[lemma];
+        }
+      }
+      confirmPanel = null;
+      trackerState.page = 1;
+      renderTracker();
+    })();
+  });
+
+  confirmAllYes.addEventListener("click", () => {
+    (async () => {
+      try {
+        await clearTracker();
+        trackerState.data = await readTracker();
+      } catch (err) {
+        // storage unavailable — clear the in-memory view only
+        trackerState.data = emptyTracker();
+      }
+      confirmPanel = null;
+      trackerState.page = 1;
+      renderTracker();
+    })();
+  });
+
+  confirmArchivedCancel.addEventListener("click", () => {
+    confirmPanel = null;
+    renderTracker();
+  });
+
+  confirmAllCancel.addEventListener("click", () => {
+    confirmPanel = null;
     renderTracker();
   });
 
