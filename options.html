@@ -119,7 +119,8 @@
         color: #57606a;
         margin: 0 0 8px;
       }
-      #word-search {
+      #word-search,
+      #cards-search {
         font: inherit;
         width: 100%;
         box-sizing: border-box;
@@ -129,7 +130,8 @@
         margin-bottom: 8px;
         background: #fff;
       }
-      #word-search:focus {
+      #word-search:focus,
+      #cards-search:focus {
         outline: none;
         border-color: #1a56a0;
       }
@@ -261,6 +263,56 @@
         color: #8a929b;
         margin: 10px 0;
       }
+      .card {
+        border: 1px solid #e4e8ec;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin: 8px 0;
+      }
+      .card-line1 {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .card-text {
+        font-weight: 600;
+      }
+      .card-badge {
+        padding: 0 5px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        line-height: 16px;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .card-badge.word {
+        background: #eef3f9;
+        color: #1a56a0;
+      }
+      .card-badge.phrase {
+        background: #eef1f4;
+        color: #8a929b;
+      }
+      .card-def {
+        font-size: 12.5px;
+        color: #1f2328;
+        margin-top: 2px;
+      }
+      .card-context {
+        background: #f6f8fa;
+        border-radius: 6px;
+        padding: 5px 8px;
+        margin-top: 6px;
+        font-size: 11px;
+        font-style: italic;
+        color: #8a929b;
+      }
+      .card-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 6px;
+      }
       .cleanup {
         border-top: 1px solid #f0f2f5;
         margin: 0 0 10px;
@@ -352,7 +404,8 @@
     <h1>Sage Pop-Up</h1>
     <div class="tabs" role="tablist">
       <button id="tab-ai" class="tab active" type="button" role="tab">AI settings</button>
-      <button id="tab-tracker" class="tab" type="button" role="tab">Word tracker</button>
+      <button id="tab-tracker" class="tab" type="button" role="tab">Your vocabulary</button>
+      <button id="tab-cards" class="tab" type="button" role="tab">Cards to learn</button>
     </div>
     <div id="panel-ai" class="panel" role="tabpanel">
     <label for="provider">Provider</label>
@@ -406,6 +459,12 @@
         </div>
       </div>
       <p id="word-footnote" class="footnote" hidden>* You can delete archived or all words on the Archived page.</p>
+    </div>
+    <div id="panel-cards" class="panel" role="tabpanel" hidden>
+      <p id="cards-summary" class="tracker-summary"></p>
+      <input id="cards-search" type="search" autocomplete="off" placeholder="Search saved…" />
+      <div id="cards-chips" class="chips"></div>
+      <div id="cards-list"></div>
     </div>
     <script src="options.js"></script>
   </body>

@@ -36,6 +36,9 @@ named below.
   first definition found) and your ready threshold are stored only in
   `chrome.storage.local`; they never leave your browser and can be removed
   on the settings page.
+- **Cards to learn.** Saved words and phrases — with their definitions and
+  the sentence context around them — are stored only in
+  `chrome.storage.local`; they never leave your browser.
 - The extension keeps no history of your lookups beyond these word tracker
   counters.
 

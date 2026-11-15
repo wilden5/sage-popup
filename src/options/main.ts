@@ -30,9 +30,11 @@ import {
   clearTracker,
   readTracker,
   readTrackerSettings,
+  unsaveWord,
   writeTracker,
   writeTrackerSettings
 } from "../tracker/storage";
+import { deletePhrase, readPhraseCollection } from "../collection/storage";
 import { countByStatus, filterByQuery, listWords } from "./words";
 import type { SortKey, StatusCounts, StatusFilter, WordListResult } from "./words";
 
@@ -238,21 +240,33 @@ import type { SortKey, StatusCounts, StatusFilter, WordListResult } from "./word
 
   const tabAi = document.getElementById("tab-ai") as HTMLButtonElement;
   const tabTracker = document.getElementById("tab-tracker") as HTMLButtonElement;
+  const tabCards = document.getElementById("tab-cards") as HTMLButtonElement;
   const panelAi = document.getElementById("panel-ai") as HTMLElement;
   const panelTracker = document.getElementById("panel-tracker") as HTMLElement;
+  const panelCards = document.getElementById("panel-cards") as HTMLElement;
 
-  function activateTab(which: "ai" | "tracker") {
+  function activateTab(which: "ai" | "tracker" | "cards") {
     tabAi.classList.toggle("active", which === "ai");
     tabTracker.classList.toggle("active", which === "tracker");
+    tabCards.classList.toggle("active", which === "cards");
     panelAi.hidden = which !== "ai";
     panelTracker.hidden = which !== "tracker";
+    panelCards.hidden = which !== "cards";
     // The cleanup confirm panel is transient view state — switching tabs
     // always collapses it.
     confirmPanel = null;
+    if (which === "cards") {
+      // Entering the tab resets its search + chip filter and reloads the data.
+      cardsState.query = "";
+      cardsState.filter = "all";
+      cardsSearchInput.value = "";
+      void loadCards();
+    }
   }
 
   tabAi.addEventListener("click", () => activateTab("ai"));
   tabTracker.addEventListener("click", () => activateTab("tracker"));
+  tabCards.addEventListener("click", () => activateTab("cards"));
 
   /** True when at least one non-empty key exists in the stored aiKeys map. */
   function hasAnyStoredKey(snapshot: StorageSnapshot): boolean {
@@ -619,6 +633,180 @@ import type { SortKey, StatusCounts, StatusFilter, WordListResult } from "./word
     renderTracker();
   });
 
+  // ---------------------------------------------------------- cards to learn
+
+  const cardsSummaryEl = document.getElementById("cards-summary") as HTMLElement;
+  const cardsSearchInput = document.getElementById("cards-search") as HTMLInputElement;
+  const cardsChipsEl = document.getElementById("cards-chips") as HTMLElement;
+  const cardsListEl = document.getElementById("cards-list") as HTMLElement;
+
+  type CardKind = "word" | "phrase";
+
+  interface CardItem {
+    kind: CardKind;
+    key: string; // tracker lemma for words, normalized text for phrases
+    text: string;
+    definition?: string;
+    context?: string;
+    updatedAt: number;
+  }
+
+  const cardsState: {
+    items: CardItem[];
+    filter: "all" | CardKind;
+    query: string;
+  } = { items: [], filter: "all", query: "" };
+
+  const CARD_CHIPS: { filter: "all" | CardKind; label: string }[] = [
+    { filter: "all", label: "All" },
+    { filter: "word", label: "Words" },
+    { filter: "phrase", label: "Phrases" },
+  ];
+
+  /** Merge saved tracker words (kind "word") and phrase entries (kind "phrase"). */
+  async function loadCards(): Promise<void> {
+    try {
+      const [tracker, phrases] = await Promise.all([readTracker(), readPhraseCollection()]);
+      const items: CardItem[] = [];
+      for (const lemma of Object.keys(tracker.words)) {
+        const entry = tracker.words[lemma];
+        if (entry && entry.saved === true) {
+          items.push({
+            kind: "word",
+            key: lemma,
+            text: entry.lemma,
+            definition: entry.definition,
+            context: entry.context,
+            updatedAt: entry.updatedAt,
+          });
+        }
+      }
+      for (const key of Object.keys(phrases.phrases)) {
+        const phrase = phrases.phrases[key];
+        if (phrase) {
+          items.push({
+            kind: "phrase",
+            key,
+            text: phrase.text,
+            definition: phrase.definition,
+            context: phrase.context,
+            updatedAt: phrase.updatedAt,
+          });
+        }
+      }
+      cardsState.items = items;
+    } catch (err) {
+      // storage unavailable — render whatever is in memory
+    }
+    renderCards();
+  }
+
+  function deleteCard(item: CardItem): void {
+    (async () => {
+      try {
+        if (item.kind === "word") await unsaveWord(item.key); // the word stays in Your vocabulary
+        else await deletePhrase(item.key);
+      } catch (err) {
+        // storage unavailable — refresh from memory anyway
+      }
+      await loadCards(); // re-render the list and all counts live
+    })();
+  }
+
+  function buildCard(item: CardItem): HTMLElement {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const line1 = document.createElement("div");
+    line1.className = "card-line1";
+    const text = document.createElement("span");
+    text.className = "card-text";
+    text.textContent = item.text;
+    line1.appendChild(text);
+    const badge = document.createElement("span");
+    badge.className = "card-badge " + item.kind;
+    badge.textContent = item.kind;
+    line1.appendChild(badge);
+    card.appendChild(line1);
+
+    if (item.definition) {
+      const def = document.createElement("div");
+      def.className = "card-def";
+      def.textContent = item.definition;
+      card.appendChild(def);
+    }
+    if (item.context) {
+      const ctx = document.createElement("div");
+      ctx.className = "card-context";
+      ctx.textContent = item.context;
+      card.appendChild(ctx);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    actions.appendChild(actionButton("Delete", "delete", () => deleteCard(item)));
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  function renderCards(): void {
+    const total = cardsState.items.length;
+    // The summary line stays about the whole collection; the chip counts
+    // describe the CURRENT search result set (query applied) — same
+    // semantics as the tracker status chips.
+    cardsSummaryEl.textContent = total + " saved";
+
+    const q = cardsState.query.trim().toLowerCase();
+    const matching = cardsState.items.filter((item) => q === "" || item.text.toLowerCase().includes(q));
+    const wordCount = matching.filter((item) => item.kind === "word").length;
+    const phraseCount = matching.filter((item) => item.kind === "phrase").length;
+
+    cardsChipsEl.textContent = "";
+    for (const chip of CARD_CHIPS) {
+      const n = chip.filter === "all" ? matching.length : chip.filter === "word" ? wordCount : phraseCount;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip" + (cardsState.filter === chip.filter ? " active" : "");
+      btn.textContent = chip.label + " (" + n + ")";
+      btn.addEventListener("click", () => {
+        cardsState.filter = chip.filter;
+        renderCards();
+      });
+      cardsChipsEl.appendChild(btn);
+    }
+
+    // Most recently saved first.
+    const rows = matching
+      .filter((item) => cardsState.filter === "all" || item.kind === cardsState.filter)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+
+    cardsListEl.textContent = "";
+    if (total === 0) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent =
+        "Nothing saved yet. Open a popup on a page and press Save — the word or phrase is kept with its definition and context.";
+      cardsListEl.appendChild(p);
+      return;
+    }
+    if (rows.length === 0) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = "Nothing found.";
+      cardsListEl.appendChild(p);
+      return;
+    }
+    for (const item of rows) {
+      cardsListEl.appendChild(buildCard(item));
+    }
+  }
+
+  cardsSearchInput.addEventListener("input", () => {
+    cardsState.query = cardsSearchInput.value;
+    renderCards();
+  });
+
   async function initTabsAndTracker(): Promise<void> {
     try {
       const [snapshot, data, settings] = await Promise.all([
@@ -637,6 +825,7 @@ import type { SortKey, StatusCounts, StatusFilter, WordListResult } from "./word
       activateTab("ai");
     }
     renderTracker();
+    void loadCards();
   }
 
   void initTabsAndTracker();
