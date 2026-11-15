@@ -2,13 +2,16 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   WORD_TRACKER_KEY,
   WORD_TRACKER_SETTINGS_KEY,
+  clearArchived,
+  clearTracker,
   readTracker,
   writeTracker,
   readTrackerSettings,
   writeTrackerSettings,
 } from "../../src/tracker/storage";
 import { TRACKER_SETTINGS_SCHEMA_VERSION, defaultTrackerSettings } from "../../src/tracker/settings";
-import { DEFAULT_THRESHOLD, emptyTracker } from "../../src/tracker/model";
+import { DEFAULT_THRESHOLD, WORD_TRACKER_SCHEMA_VERSION, emptyTracker } from "../../src/tracker/model";
+import type { WordEntry } from "../../src/tracker/model";
 
 /** Tiny in-memory chrome.storage.local installed on globalThis before each test. */
 function installChromeMock(store: Map<string, unknown>) {
@@ -88,5 +91,74 @@ describe("tracker settings storage", () => {
 
   it("default threshold is DEFAULT_THRESHOLD", () => {
     expect(defaultTrackerSettings().threshold).toBe(DEFAULT_THRESHOLD);
+  });
+});
+
+describe("tracker collection cleanup", () => {
+  let store: Map<string, unknown>;
+
+  beforeEach(() => {
+    store = new Map();
+    installChromeMock(store);
+  });
+
+  function makeEntry(lemma: string, status: WordEntry["status"]): WordEntry {
+    return {
+      id: lemma + "-id",
+      lemma,
+      forms: [lemma],
+      count: 2,
+      firstSeen: 1000,
+      lastSeen: 2000,
+      updatedAt: 2000,
+      status,
+      definition: "definition of " + lemma,
+    };
+  }
+
+  it("clearTracker writes an empty words map with the current schema version", async () => {
+    await writeTracker({
+      schemaVersion: WORD_TRACKER_SCHEMA_VERSION,
+      words: { run: makeEntry("run", "active"), old: makeEntry("old", "archived") },
+    });
+    await clearTracker();
+    expect(store.get(WORD_TRACKER_KEY)).toEqual({
+      schemaVersion: WORD_TRACKER_SCHEMA_VERSION,
+      words: {},
+    });
+    expect(await readTracker()).toEqual(emptyTracker());
+  });
+
+  it("clearTracker leaves the settings key untouched", async () => {
+    await writeTrackerSettings({ schemaVersion: TRACKER_SETTINGS_SCHEMA_VERSION, threshold: 4 });
+    await writeTracker({ schemaVersion: WORD_TRACKER_SCHEMA_VERSION, words: { run: makeEntry("run", "ready") } });
+    await clearTracker();
+    expect((await readTrackerSettings()).threshold).toBe(4);
+  });
+
+  it("clearArchived removes only archived entries and keeps every other entry intact", async () => {
+    const active = makeEntry("run", "active");
+    const ready = makeEntry("think", "ready");
+    const archived = makeEntry("old", "archived");
+    await writeTracker({
+      schemaVersion: WORD_TRACKER_SCHEMA_VERSION,
+      words: { run: active, think: ready, old: archived },
+    });
+    await clearArchived();
+    const data = await readTracker();
+    expect(Object.keys(data.words).sort()).toEqual(["run", "think"]);
+    expect(data.words["run"]).toEqual(active);
+    expect(data.words["think"]).toEqual(ready);
+    expect(data.schemaVersion).toBe(WORD_TRACKER_SCHEMA_VERSION);
+  });
+
+  it("clearArchived on an empty or archived-free collection changes nothing", async () => {
+    await writeTracker(emptyTracker());
+    await clearArchived();
+    expect(await readTracker()).toEqual(emptyTracker());
+    const ready = makeEntry("think", "ready");
+    await writeTracker({ schemaVersion: WORD_TRACKER_SCHEMA_VERSION, words: { think: ready } });
+    await clearArchived();
+    expect((await readTracker()).words["think"]).toEqual(ready);
   });
 });

@@ -36,6 +36,30 @@ export async function writeTracker(data: WordTrackerData): Promise<void> {
 }
 
 /**
+ * Global reset: write an empty collection (current schema version) to the
+ * wordTracker key. The wordTrackerSettings key is data-independent and is
+ * never touched here.
+ */
+export async function clearTracker(): Promise<void> {
+  await chrome.storage.local.set({
+    [WORD_TRACKER_KEY]: { schemaVersion: WORD_TRACKER_SCHEMA_VERSION, words: {} },
+  });
+}
+
+/**
+ * Remove every entry with status "archived" and write the rest back
+ * unchanged (same persistence path as writeTracker). Non-archived entries
+ * and their fields are kept intact.
+ */
+export async function clearArchived(): Promise<void> {
+  const data = await readTracker();
+  for (const lemma of Object.keys(data.words)) {
+    if (data.words[lemma].status === "archived") delete data.words[lemma];
+  }
+  await writeTracker(data);
+}
+
+/**
  * Read the tracker settings. Missing key, non-object value, a schema
  * version mismatch, or a non-numeric threshold all yield the defaults —
  * corrupt data must never throw here. A numeric threshold is clamped
