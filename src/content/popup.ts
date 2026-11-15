@@ -22,6 +22,7 @@ import { readTracker, readTrackerSettings, saveWord, unsaveWord } from "../track
 import type { WordEntry } from "../tracker/model";
 import { deletePhrase, readPhraseCollection, savePhrase } from "../collection/storage";
 import { normalizePhrase } from "../collection/model";
+import { normalize as trackerLemma } from "../tracker/normalize";
 
 /** The open popup element (null while no popup is shown) plus the sentence
  *  context captured for the current lookup (stored when the popup opens). */
@@ -171,13 +172,17 @@ function attachBookmark(definitionReady: boolean): void {
 /** Read the saved state in parallel with the lookup; refresh the button. */
 async function loadBookmarkSaved(text: string, isPhrase: boolean): Promise<void> {
   let saved = false;
+  // The storage key: normalized text for phrases, the tracker LEMMA for
+  // words — the popup word can be an inflected surface form ("running"),
+  // while the tracker keys entries by their lemma ("run").
+  const key = isPhrase ? normalizePhrase(text) : trackerLemma(text);
   try {
     if (isPhrase) {
       const data = await readPhraseCollection();
-      saved = Boolean(data.phrases[normalizePhrase(text)]);
+      saved = Boolean(data.phrases[key]);
     } else {
       const data = await readTracker();
-      const entry = data.words[text];
+      const entry = data.words[key];
       saved = Boolean(entry && entry.saved);
     }
   } catch (err) {
@@ -193,21 +198,25 @@ async function toggleBookmark(): Promise<void> {
   if (!bookmark) return;
   const { text, isPhrase, saved } = bookmark;
   const context = popupState.sentence;
+  // Same key discipline as loadBookmarkSaved: the tracker lemma for words
+  // (the popup word may be an inflected form), normalized text for phrases.
+  const key = isPhrase ? normalizePhrase(text) : trackerLemma(text);
   try {
     if (isPhrase) {
       if (saved) {
-        await deletePhrase(normalizePhrase(text));
+        await deletePhrase(key);
         bookmark.saved = false;
       } else {
-        await savePhrase(text, context, currentDefinition ?? "");
+        if (!currentDefinition) return; // nothing rendered yet — there is no definition to keep
+        await savePhrase(text, context, currentDefinition);
         bookmark.saved = true;
       }
     } else {
       if (saved) {
-        await unsaveWord(text);
+        await unsaveWord(key);
         bookmark.saved = false;
       } else {
-        await saveWord(text, context, currentDefinition);
+        await saveWord(key, context, currentDefinition);
         bookmark.saved = true;
       }
     }
