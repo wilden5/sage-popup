@@ -78,7 +78,7 @@ the new origin. Firefox does not grant newly added host permissions on
 extension reload — after re-loading a temporary add-on, click
 **Grant access** once and the AI fallback works again. It can also be
 enabled manually:
-`about:addons → Sage Pop-Up → «Разрешения и данные»`.
+`about:addons → Sage Pop-Up → "Permissions and data"`.
 
 Without a key for the selected provider everything Oxford keeps working;
 AI fallback simply degrades to the usual "no definition found" UI.
