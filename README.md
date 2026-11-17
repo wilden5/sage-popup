@@ -8,6 +8,12 @@ definition instead of a translation.
 
 Works in both Chrome and Firefox (Manifest V3).
 
+## Install
+
+- **Firefox** — [install from addons.mozilla.org](https://addons.mozilla.org/firefox/addon/sage-pop-up/)
+  (signed, auto-updating).
+- **Chrome** — the Chrome Web Store listing is in review.
+
 ## What the popup shows
 
 - headword, part of speech, UK/US transcription
@@ -102,9 +108,9 @@ every shipped version).
 2. Click **Load Temporary Add-on…**
 3. Pick `dist/manifest.json`
 
-For a permanent install, the extension must be signed via
-[addons.mozilla.org](https://addons.mozilla.org/) (or self-distribution with
-`web-ext sign`).
+For a permanent install, use the
+[AMO listing](https://addons.mozilla.org/firefox/addon/sage-pop-up/) (or
+self-distribution with `web-ext sign`).
 
 ### Chrome
 
