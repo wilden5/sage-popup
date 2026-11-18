@@ -12,7 +12,7 @@ Works in both Chrome and Firefox (Manifest V3).
 
 - **Firefox** — [install from addons.mozilla.org](https://addons.mozilla.org/firefox/addon/sage-pop-up/)
   (signed, auto-updating).
-- **Chrome** — the Chrome Web Store listing is in review.
+- **Chrome** — [install from the Chrome Web Store](https://chromewebstore.google.com/detail/sage-pop-up/mplfdnigicccioibpbhikneafaflogmi).
 
 ## What the popup shows
 
